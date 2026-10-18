@@ -21,6 +21,7 @@
 /.idea/
 ExportedObj/
 *.csproj
+!/Server/**/*.csproj
 *.sln
 *.suo
 *.tmp
