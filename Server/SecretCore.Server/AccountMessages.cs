@@ -25,6 +25,22 @@ public sealed class RegisterRequestMsg : BaseMsg
 }
 
 /// <summary>
+/// 登录成功后进入大厅需要的首批数据。
+/// 客户端和服务端必须保持相同的字段及 NetField 顺序。
+/// </summary>
+public sealed class LoginInitialData
+{
+    [NetField(1)]
+    public PlayerProfileData? playerData;
+
+    [NetField(2)]
+    public PlayerSocialData? socialData;
+
+    [NetField(3)]
+    public WorldChatData[] worldChatHistory = Array.Empty<WorldChatData>();
+}
+
+/// <summary>
 /// 服务端返回的登录结果。
 /// 只包含客户端需要的数据，不包含密码哈希和盐。
 /// </summary>
@@ -38,10 +54,7 @@ public sealed class LoginResponseMsg : BaseMsg
     public string error = string.Empty;
 
     [NetField(3)]
-    public PlayerProfileData? playerData;
-
-    [NetField(4)]
-    public PlayerSocialData? socialData;
+    public LoginInitialData? initialData;
 }
 
 /// <summary>
@@ -57,8 +70,5 @@ public sealed class RegisterResponseMsg : BaseMsg
     public string error = string.Empty;
 
     [NetField(3)]
-    public PlayerProfileData? playerData;
-
-    [NetField(4)]
-    public PlayerSocialData? socialData;
+    public LoginInitialData? initialData;
 }

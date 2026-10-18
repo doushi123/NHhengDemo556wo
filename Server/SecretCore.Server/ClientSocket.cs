@@ -12,6 +12,9 @@ public sealed class ClientSocket
 
     private int cacheNum;
     private volatile bool isConnected = true;
+    private PlayerProfileData? currentPlayer;
+
+    public bool IsLoggedIn => currentPlayer != null;
 
     public ClientSocket(ServerSocket server, Socket socket)
     {
@@ -155,6 +158,12 @@ public sealed class ClientSocket
         if (msg is RequestFriendsDataMsg friendsRequest)
         {
             SendFriendsData(friendsRequest);
+            return;
+        }
+
+        if (msg is SendWorldChatMsg worldChatRequest)
+        {
+            HandleWorldChat(worldChatRequest);
         }
     }
 
@@ -167,12 +176,16 @@ public sealed class ClientSocket
             out PlayerSocialData? socialData,
             out string error);
 
+        if (success)
+        {
+            currentPlayer = playerData;
+        }
+
         Send(new LoginResponseMsg
         {
             success = success,
             error = error,
-            playerData = playerData,
-            socialData = socialData,
+            initialData = success ? CreateLoginInitialData(playerData, socialData) : null,
         });
     }
 
@@ -185,13 +198,32 @@ public sealed class ClientSocket
             out PlayerSocialData? socialData,
             out string error);
 
+        if (success)
+        {
+            currentPlayer = playerData;
+        }
+
         Send(new RegisterResponseMsg
         {
             success = success,
             error = error,
+            initialData = success ? CreateLoginInitialData(playerData, socialData) : null,
+        });
+    }
+
+    /// <summary>
+    /// 统一组装登录或注册成功后进入大厅需要的首批数据。
+    /// </summary>
+    private LoginInitialData CreateLoginInitialData(
+        PlayerProfileData? playerData,
+        PlayerSocialData? socialData)
+    {
+        return new LoginInitialData
+        {
             playerData = playerData,
             socialData = socialData,
-        });
+            worldChatHistory = server.GetWorldChatHistory(),
+        };
     }
 
     private void SendPlayerData(RequestPlayerDataMsg request)
@@ -214,5 +246,46 @@ public sealed class ClientSocket
         }
 
         Send(new FriendsDataMsg { success = false, error = "没有找到该玩家的好友数据。" });
+    }
+
+    private void HandleWorldChat(SendWorldChatMsg request)
+    {
+        if (currentPlayer == null)
+        {
+            SendWorldChatError("登录后才能发送世界消息。");
+            return;
+        }
+
+        string content = request.content.Trim();
+        if (content.Length == 0)
+        {
+            SendWorldChatError("消息内容不能为空。");
+            return;
+        }
+
+        if (content.Length > 50)
+        {
+            SendWorldChatError("世界消息最多输入 50 个字符。");
+            return;
+        }
+
+        WorldChatData data = server.CreateWorldChatData(currentPlayer, content);
+
+        // 先记入历史再广播：之后登录的玩家从历史里拿到这条，已在线的玩家收到广播。
+        server.RecordWorldChat(data);
+        server.BroadcastWorldChat(new WorldChatMsg
+        {
+            success = true,
+            data = data,
+        });
+    }
+
+    private void SendWorldChatError(string error)
+    {
+        Send(new WorldChatMsg
+        {
+            success = false,
+            error = error,
+        });
     }
 }

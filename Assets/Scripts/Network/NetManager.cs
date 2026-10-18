@@ -9,17 +9,15 @@ public sealed class NetManager : AppService
 {
     public static NetManager Instance { get; private set; }
 
-    private const int MaxMessageBodySize = 1024 * 1024;
-
-    [SerializeField] private string serverIP = "127.0.0.1";
-    [SerializeField] private int serverPort = 7777;
-
     private readonly ConcurrentQueue<BaseMsg> sendMsgQueue = new ConcurrentQueue<BaseMsg>();
     private readonly ConcurrentQueue<BaseMsg> receiveMsgQueue = new ConcurrentQueue<BaseMsg>();
+    /// <summary>
+    /// 用于唤醒线程
+    /// </summary>
     private readonly AutoResetEvent sendSignal = new AutoResetEvent(false);
 
     private readonly byte[] receiveBytes = new byte[8192];
-    private readonly byte[] cacheBytes = new byte[MaxMessageBodySize + 8];
+    private readonly byte[] cacheBytes = new byte[NetConst.MaxMessageBodySize + 8];
 
     private Socket socket;
     private Thread sendThread;
@@ -29,8 +27,6 @@ public sealed class NetManager : AppService
     private string pendingTip;
 
     public bool IsConnected => isConnected;
-    public PlayerProfileData CurrentPlayerData { get; private set; }
-    public PlayerSocialData CurrentFriendsData { get; private set; }
 
     protected override void OnInitialize()
     {
@@ -50,7 +46,7 @@ public sealed class NetManager : AppService
         string tip = Interlocked.Exchange(ref pendingTip, null);
         if (!string.IsNullOrEmpty(tip))
         {
-            ShowTip(tip);
+            UIManager.Instance.Open(PanelId.Tip, tip);
         }
     }
 
@@ -65,7 +61,7 @@ public sealed class NetManager : AppService
 
         try
         {
-            socket.Connect(new IPEndPoint(IPAddress.Parse(serverIP), serverPort));
+            socket.Connect(new IPEndPoint(IPAddress.Parse(NetConst.ServerIP), NetConst.ServerPort));
             isConnected = true;
 
             sendThread = new Thread(SendMessages) { IsBackground = true };
@@ -76,18 +72,8 @@ public sealed class NetManager : AppService
         catch (SocketException)
         {
             Close();
-            ShowTip("无法连接服务器，请确认服务器已经启动。");
+            UIManager.Instance.Open(PanelId.Tip, "无法连接服务器，请确认服务器已经启动。");
         }
-    }
-
-    public void RequestPlayerData(int playerID)
-    {
-        Send(new RequestPlayerDataMsg { playerID = playerID });
-    }
-
-    public void RequestFriendsData(int playerID)
-    {
-        Send(new RequestFriendsDataMsg { playerID = playerID });
     }
 
     public void Login(string account, string password)
@@ -112,7 +98,7 @@ public sealed class NetManager : AppService
     {
         if (!isConnected)
         {
-            ShowTip("尚未连接到服务器。");
+            UIManager.Instance.Open(PanelId.Tip, "尚未连接到服务器。");
             return;
         }
 
@@ -210,7 +196,7 @@ public sealed class NetManager : AppService
             int msgID = BitConverter.ToInt32(cacheBytes, index);
             int bodyLength = BitConverter.ToInt32(cacheBytes, index + 4);
 
-            if (bodyLength < 0 || bodyLength > MaxMessageBodySize)
+            if (bodyLength < 0 || bodyLength > NetConst.MaxMessageBodySize)
             {
                 throw new InvalidOperationException("非法消息长度：" + bodyLength);
             }
@@ -242,41 +228,31 @@ public sealed class NetManager : AppService
     {
         if (msg is LoginResponseMsg loginResponse)
         {
-            ApplyAccountResult("登录", loginResponse.success, loginResponse.error,
-                loginResponse.playerData, loginResponse.socialData);
+            ApplyAccountResult("登录", loginResponse.success, loginResponse.error, loginResponse.initialData);
             return;
         }
 
         if (msg is RegisterResponseMsg registerResponse)
         {
-            ApplyAccountResult("注册", registerResponse.success, registerResponse.error,
-                registerResponse.playerData, registerResponse.socialData);
+            ApplyAccountResult("注册", registerResponse.success, registerResponse.error, registerResponse.initialData);
             return;
         }
 
         if (msg is PlayerDataMsg playerDataMsg)
         {
-            CurrentPlayerData = playerDataMsg.success ? playerDataMsg.data : null;
-            if (!playerDataMsg.success)
-            {
-                ShowTip(playerDataMsg.error);
-                return;
-            }
-
-            Debug.Log($"收到玩家资料：{playerDataMsg.data.account}，等级 {playerDataMsg.data.level}");
+            PlayerDataManager.Instance.Receive(playerDataMsg);
             return;
         }
 
         if (msg is FriendsDataMsg friendsDataMsg)
         {
-            CurrentFriendsData = friendsDataMsg.success ? friendsDataMsg.data : null;
-            if (!friendsDataMsg.success)
-            {
-                ShowTip(friendsDataMsg.error);
-                return;
-            }
+            PlayerDataManager.Instance.Receive(friendsDataMsg);
+            return;
+        }
 
-            Debug.Log($"收到好友数据：{friendsDataMsg.data.friends.Length} 名好友，{friendsDataMsg.data.friendRequests.Length} 条申请");
+        if (msg is WorldChatMsg worldChatMsg)
+        {
+            WorldChatManager.Instance.Receive(worldChatMsg);
         }
     }
 
@@ -284,23 +260,27 @@ public sealed class NetManager : AppService
         string operationName,
         bool success,
         string error,
-        PlayerProfileData playerData,
-        PlayerSocialData socialData)
+        LoginInitialData initialData)
     {
         if (!success)
         {
-            ShowTip(error);
+            UIManager.Instance.Open(PanelId.Tip, error);
             return;
         }
 
-        CurrentPlayerData = playerData;
-        CurrentFriendsData = socialData;
-        Debug.Log($"{operationName}成功：{playerData.account}");
+        ApplyLoginInitialData(initialData);
+        UIManager.Instance.Close(PanelId.Login);
+        UIManager.Instance.Open(PanelId.Lobby);
+        Debug.Log($"{operationName}成功：{initialData.playerData.account}");
     }
 
-    private void ShowTip(string content)
+    /// <summary>
+    /// 将登录后统一下发的首批数据交给对应的客户端管理器。
+    /// </summary>
+    private void ApplyLoginInitialData(LoginInitialData initialData)
     {
-        UIManager.Instance.Open(PanelId.Tip, content);
+        PlayerDataManager.Instance.ApplyLoginData(initialData.playerData, initialData.socialData);
+        WorldChatManager.Instance.ApplyHistory(initialData.worldChatHistory);
     }
 
     private void SendAll(byte[] bytes)

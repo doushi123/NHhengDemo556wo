@@ -6,13 +6,16 @@ public sealed class ServerSocket
     private readonly object clientLock = new object();
     private readonly List<ClientSocket> clients = new List<ClientSocket>();
     private readonly AccountDataStore dataStore;
+    private readonly WorldChatStore worldChatStore;
 
     private Socket? socket;
     private volatile bool isRunning;
+    private long nextWorldChatMessageID;
 
     public ServerSocket(string dataDirectory)
     {
         dataStore = new AccountDataStore(dataDirectory);
+        worldChatStore = new WorldChatStore(dataDirectory);
     }
 
     public void Start(int port)
@@ -20,6 +23,12 @@ public sealed class ServerSocket
         // 启动时扫描并缓存本程序集中的所有 NetMessage。
         NetSerializer.RegisterMessages(typeof(ServerSocket).Assembly);
         dataStore.Load();
+        worldChatStore.Load();
+
+        // 接着历史里最大的消息编号继续发号，否则重启后新消息会和历史消息 ID 重复。
+        nextWorldChatMessageID = worldChatStore.GetLatestMessageID();
+
+        Console.WriteLine("已载入世界聊天历史：" + worldChatStore.Count + " 条");
 
         socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
         socket.Bind(new IPEndPoint(IPAddress.Any, port));
@@ -60,6 +69,46 @@ public sealed class ServerSocket
         return dataStore.TryRegister(account, password, out playerData, out socialData, out error);
     }
 
+    public WorldChatData CreateWorldChatData(PlayerProfileData player, string content)
+    {
+        return new WorldChatData
+        {
+            messageID = Interlocked.Increment(ref nextWorldChatMessageID),
+            senderPlayerID = player.playerID,
+            senderAccount = player.account,
+            content = content,
+            sendTime = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+        };
+    }
+
+    /// <summary>
+    /// 把一条已经确认的消息记入世界频道历史，供之后登录的玩家接收。
+    /// 只有真正广播出去的消息才应该调用，发送失败的消息不进历史。
+    /// </summary>
+    public void RecordWorldChat(WorldChatData data)
+    {
+        worldChatStore.Add(data);
+    }
+
+    public WorldChatData[] GetWorldChatHistory()
+    {
+        return worldChatStore.GetHistory();
+    }
+
+    public void BroadcastWorldChat(WorldChatMsg msg)
+    {
+        ClientSocket[] onlineClients;
+        lock (clientLock)
+        {
+            onlineClients = clients.Where(client => client.IsLoggedIn).ToArray();
+        }
+
+        foreach (ClientSocket client in onlineClients)
+        {
+            client.Send(msg);
+        }
+    }
+
     public void RemoveClient(ClientSocket client)
     {
         lock (clientLock)
@@ -85,6 +134,9 @@ public sealed class ServerSocket
 
             clients.Clear();
         }
+
+        // 所有连接停止后，等待世界聊天保存队列中的任务全部写完再退出服务端。
+        worldChatStore.Close();
     }
 
     private void AcceptClients(object? state)

@@ -41,7 +41,10 @@ public class LoginPanel : BasePanel
         nextObj.SetActive(false);
         loginBtn.onClick.AddListener(OnClickLogin);
         registerBtn.onClick.AddListener(OnClickRegister);
-        exitBtn.onClick.AddListener(OnClickExit);
+        exitBtn.onClick.AddListener(() =>
+        {
+            Application.Quit();
+        });
         returnBtn.onClick.AddListener(OnClickReturn);
         sureBtn.onClick.AddListener(OnClickSure);
     }
@@ -66,10 +69,6 @@ public class LoginPanel : BasePanel
         nextObj.SetActive(true);
     }
 
-    private void OnClickExit()
-    {
-        Application.Quit();
-    }
 
     private void OnClickReturn()
     {
@@ -81,7 +80,7 @@ public class LoginPanel : BasePanel
     {
         string account = accountInput.text.Trim();
         string password = passwordInput.text;
-
+        
         if (!NetManager.Instance.IsConnected)
         {
             NetManager.Instance.Connect();
@@ -100,14 +99,5 @@ public class LoginPanel : BasePanel
         {
             NetManager.Instance.Login(account, password);
         }
-    }
-
-    void OnDestroy()
-    {
-        loginBtn.onClick.RemoveListener(OnClickLogin);
-        registerBtn.onClick.RemoveListener(OnClickRegister);
-        exitBtn.onClick.RemoveListener(OnClickExit);
-        returnBtn.onClick.RemoveListener(OnClickReturn);
-        sureBtn.onClick.RemoveListener(OnClickSure);
     }
 }
