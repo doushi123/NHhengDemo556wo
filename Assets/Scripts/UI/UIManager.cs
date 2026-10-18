@@ -3,6 +3,8 @@ using UnityEngine;
 
 public sealed class UIManager : AppService
 {
+    public static UIManager Instance { get; private set; }
+
     [SerializeField] private Transform uiRoot;
     [SerializeField] private List<BasePanel> panelPrefabs = new List<BasePanel>();
 
@@ -11,6 +13,8 @@ public sealed class UIManager : AppService
 
     protected override void OnInitialize()
     {
+        Instance = this;
+
         foreach (BasePanel prefab in panelPrefabs)
         {
             prefabs.Add(prefab.Id, prefab);
@@ -44,6 +48,7 @@ public sealed class UIManager : AppService
     {
         prefabs.Clear();
         instances.Clear();
+        Instance = null;
     }
 
     private BasePanel GetOrCreate(PanelId id)

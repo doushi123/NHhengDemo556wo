@@ -4,6 +4,8 @@ using UnityEngine;
 
 public sealed class AudioManager : AppService
 {
+    public static AudioManager Instance { get; private set; }
+
     [SerializeField] private AudioConfig audioConfig;
     [SerializeField] private AudioSource musicSource;
     [SerializeField] private AudioSource soundSource;
@@ -17,6 +19,8 @@ public sealed class AudioManager : AppService
 
     protected override void OnInitialize()
     {
+        Instance = this;
+
         foreach (MusicConfig config in audioConfig.Music)
         {
             music.Add(config.Id, config);
@@ -94,5 +98,6 @@ public sealed class AudioManager : AppService
         currentMusic = null;
         music.Clear();
         sounds.Clear();
+        Instance = null;
     }
 }

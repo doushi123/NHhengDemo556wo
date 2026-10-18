@@ -9,4 +9,5 @@ public enum PanelId
     ConfirmDialog,
     Loading,
     BattleHud,
+    Tip,
 }
