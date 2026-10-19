@@ -15,6 +15,7 @@ public sealed class ClientSocket
     private PlayerProfileData? currentPlayer;
 
     public bool IsLoggedIn => currentPlayer != null;
+    public int PlayerID => currentPlayer?.playerID ?? 0;
 
     public ClientSocket(ServerSocket server, Socket socket)
     {
@@ -157,7 +158,25 @@ public sealed class ClientSocket
 
         if (msg is RequestFriendsDataMsg friendsRequest)
         {
-            SendFriendsData(friendsRequest);
+            SendFriendsData();
+            return;
+        }
+
+        if (msg is SearchPlayerRequestMsg searchPlayerRequest)
+        {
+            HandleSearchPlayer(searchPlayerRequest);
+            return;
+        }
+
+        if (msg is SendFriendRequestMsg sendFriendRequest)
+        {
+            HandleSendFriendRequest(sendFriendRequest);
+            return;
+        }
+
+        if (msg is HandleFriendRequestMsg handleFriendRequest)
+        {
+            HandleFriendRequest(handleFriendRequest);
             return;
         }
 
@@ -176,16 +195,16 @@ public sealed class ClientSocket
             out PlayerSocialData? socialData,
             out string error);
 
-        if (success)
+        if (!success)
         {
-            currentPlayer = playerData;
+            SendOperationResult(OperationType.Login, false, error);
+            return;
         }
 
-        Send(new LoginResponseMsg
+        currentPlayer = playerData;
+        Send(new AuthSuccessMsg
         {
-            success = success,
-            error = error,
-            initialData = success ? CreateLoginInitialData(playerData, socialData) : null,
+            initialData = CreateLoginInitialData(playerData, socialData),
         });
     }
 
@@ -198,16 +217,16 @@ public sealed class ClientSocket
             out PlayerSocialData? socialData,
             out string error);
 
-        if (success)
+        if (!success)
         {
-            currentPlayer = playerData;
+            SendOperationResult(OperationType.Register, false, error);
+            return;
         }
 
-        Send(new RegisterResponseMsg
+        currentPlayer = playerData;
+        Send(new AuthSuccessMsg
         {
-            success = success,
-            error = error,
-            initialData = success ? CreateLoginInitialData(playerData, socialData) : null,
+            initialData = CreateLoginInitialData(playerData, socialData),
         });
     }
 
@@ -230,22 +249,104 @@ public sealed class ClientSocket
     {
         if (server.TryGetPlayerData(request.playerID, out PlayerProfileData? playerData))
         {
-            Send(new PlayerDataMsg { success = true, data = playerData });
+            Send(new PlayerDataMsg { data = playerData });
             return;
         }
 
-        Send(new PlayerDataMsg { success = false, error = "没有找到该玩家。" });
+        SendOperationResult(OperationType.RequestPlayerData, false, "没有找到该玩家。");
     }
 
-    private void SendFriendsData(RequestFriendsDataMsg request)
+    private void SendFriendsData()
     {
-        if (server.TryGetFriendsData(request.playerID, out PlayerSocialData? friendsData))
+        if (currentPlayer == null)
         {
-            Send(new FriendsDataMsg { success = true, data = friendsData });
+            SendOperationResult(OperationType.RequestFriendsData, false, "登录后才能获取好友数据。");
             return;
         }
 
-        Send(new FriendsDataMsg { success = false, error = "没有找到该玩家的好友数据。" });
+        if (server.TryGetFriendsData(currentPlayer.playerID, out PlayerSocialData? friendsData))
+        {
+            Send(new FriendsDataMsg { data = friendsData });
+            return;
+        }
+
+        SendOperationResult(OperationType.RequestFriendsData, false, "没有找到该玩家的好友数据。");
+    }
+
+    private void HandleSearchPlayer(SearchPlayerRequestMsg request)
+    {
+        if (currentPlayer == null)
+        {
+            SendOperationResult(OperationType.SearchPlayer, false, "登录后才能查找玩家。");
+            return;
+        }
+
+        bool success = server.TrySearchPlayer(
+            request.account, out PlayerProfileData? playerData, out string error);
+        if (success)
+        {
+            Send(new PlayerDataMsg { data = playerData });
+            return;
+        }
+
+        SendOperationResult(OperationType.SearchPlayer, false, error);
+    }
+
+    private void HandleSendFriendRequest(SendFriendRequestMsg request)
+    {
+        if (currentPlayer == null)
+        {
+            SendOperationResult(OperationType.SendFriendRequest, false, "登录后才能发送好友申请。");
+            return;
+        }
+
+        bool success = server.TrySendFriendRequest(
+            currentPlayer.playerID, request.targetPlayerID, request.message,
+            out PlayerSocialData? targetSocialData, out string error);
+
+        SendOperationResult(OperationType.SendFriendRequest, success, error);
+
+        if (success)
+        {
+            server.SendFriendsDataToPlayer(request.targetPlayerID, targetSocialData!);
+        }
+    }
+
+    private void HandleFriendRequest(HandleFriendRequestMsg request)
+    {
+        if (currentPlayer == null)
+        {
+            SendOperationResult(OperationType.HandleFriendRequest, false, "登录后才能处理好友申请。");
+            return;
+        }
+
+        bool success = server.TryHandleFriendRequest(
+            currentPlayer.playerID, request.senderPlayerID, request.accept,
+            out PlayerSocialData? receiverSocialData,
+            out PlayerSocialData? senderSocialData, out string error);
+
+        SendOperationResult(OperationType.HandleFriendRequest, success, error);
+
+        if (!success)
+        {
+            return;
+        }
+
+        server.SendFriendsDataToPlayer(currentPlayer.playerID, receiverSocialData!);
+        if (request.accept)
+        {
+            server.SendFriendsDataToPlayer(request.senderPlayerID, senderSocialData!);
+        }
+    }
+
+    private void SendOperationResult(OperationType operation, bool success, string error)
+    {
+        Send(new OperationResultMsg
+        {
+            operation = operation,
+            success = success,
+            error = error,
+        });
     }
 
     private void HandleWorldChat(SendWorldChatMsg request)

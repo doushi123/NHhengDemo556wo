@@ -49,6 +49,52 @@ public sealed class ServerSocket
         return dataStore.TryGetFriendsData(playerID, out data);
     }
 
+    public bool TrySearchPlayer(string account, out PlayerProfileData? playerData, out string error)
+    {
+        return dataStore.TrySearchPlayer(account, out playerData, out error);
+    }
+
+    public bool TrySendFriendRequest(
+        int senderPlayerID,
+        int targetPlayerID,
+        string message,
+        out PlayerSocialData? targetSocialData,
+        out string error)
+    {
+        return dataStore.TrySendFriendRequest(
+            senderPlayerID, targetPlayerID, message, out targetSocialData, out error);
+    }
+
+    public bool TryHandleFriendRequest(
+        int receiverPlayerID,
+        int senderPlayerID,
+        bool accept,
+        out PlayerSocialData? receiverSocialData,
+        out PlayerSocialData? senderSocialData,
+        out string error)
+    {
+        return dataStore.TryHandleFriendRequest(
+            receiverPlayerID, senderPlayerID, accept, out receiverSocialData,
+            out senderSocialData, out error);
+    }
+
+    /// <summary>
+    /// 玩家在线时立即推送最新好友数据；离线时数据已经保存在 JSON，登录后会正常下发。
+    /// </summary>
+    public void SendFriendsDataToPlayer(int playerID, PlayerSocialData data)
+    {
+        ClientSocket? targetClient;
+        lock (clientLock)
+        {
+            targetClient = clients.FirstOrDefault(client => client.PlayerID == playerID);
+        }
+
+        targetClient?.Send(new FriendsDataMsg
+        {
+            data = data,
+        });
+    }
+
     public bool TryLogin(
         string account,
         string password,

@@ -226,15 +226,12 @@ public sealed class NetManager : AppService
 
     private void HandleMessage(BaseMsg msg)
     {
-        if (msg is LoginResponseMsg loginResponse)
+        if (msg is AuthSuccessMsg authSuccess)
         {
-            ApplyAccountResult("登录", loginResponse.success, loginResponse.error, loginResponse.initialData);
-            return;
-        }
-
-        if (msg is RegisterResponseMsg registerResponse)
-        {
-            ApplyAccountResult("注册", registerResponse.success, registerResponse.error, registerResponse.initialData);
+            ApplyLoginInitialData(authSuccess.initialData);
+            UIManager.Instance.Close(PanelId.Login);
+            UIManager.Instance.Open(PanelId.Lobby);
+            Debug.Log($"认证成功：{authSuccess.initialData.playerData.account}");
             return;
         }
 
@@ -250,28 +247,23 @@ public sealed class NetManager : AppService
             return;
         }
 
+        if (msg is OperationResultMsg operationResult)
+        {
+            if (operationResult.operation == OperationType.Login
+                || operationResult.operation == OperationType.Register)
+            {
+                UIManager.Instance.Open(PanelId.Tip, operationResult.error);
+                return;
+            }
+
+            PlayerDataManager.Instance.Receive(operationResult);
+            return;
+        }
+
         if (msg is WorldChatMsg worldChatMsg)
         {
             WorldChatManager.Instance.Receive(worldChatMsg);
         }
-    }
-
-    private void ApplyAccountResult(
-        string operationName,
-        bool success,
-        string error,
-        LoginInitialData initialData)
-    {
-        if (!success)
-        {
-            UIManager.Instance.Open(PanelId.Tip, error);
-            return;
-        }
-
-        ApplyLoginInitialData(initialData);
-        UIManager.Instance.Close(PanelId.Login);
-        UIManager.Instance.Open(PanelId.Lobby);
-        Debug.Log($"{operationName}成功：{initialData.playerData.account}");
     }
 
     /// <summary>

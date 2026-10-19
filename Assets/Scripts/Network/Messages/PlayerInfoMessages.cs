@@ -15,11 +15,5 @@ public sealed class RequestPlayerDataMsg : BaseMsg
 public sealed class PlayerDataMsg : BaseMsg
 {
     [NetField(1)]
-    public bool success;
-
-    [NetField(2)]
-    public string error = string.Empty;
-
-    [NetField(3)]
     public PlayerProfileData data;
 }

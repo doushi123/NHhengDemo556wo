@@ -3,15 +3,26 @@
 /// </summary>
 public enum PlayerOnlineState
 {
+    /// <summary>
+    /// 离线
+    /// </summary>
     Offline,
+    /// <summary>
+    /// 在线，在大厅中
+    /// </summary>
     Lobby,
+    /// <summary>
+    /// 在队伍中
+    /// </summary>
     InTeam,
+    /// <summary>
+    /// 在对局中
+    /// </summary>
     InBattle,
 }
 
 /// <summary>
 /// 玩家自己的公开资料。
-/// 登录账号和密码信息不属于玩家资料。
 /// </summary>
 public class PlayerProfileData
 {
@@ -23,7 +34,9 @@ public class PlayerProfileData
 
     [NetField(3)]
     public PlayerOnlineState state;
-
+    /// <summary>
+    /// 等级
+    /// </summary>
     [NetField(4)]
     public int level;
 }

@@ -27,8 +27,8 @@ public sealed class RegisterRequestMsg : BaseMsg
 }
 
 /// <summary>
-/// 登录成功后进入大厅需要的首批数据。
-/// 以后增加大厅初始化数据时统一放在这里，不继续增加登录结果的参数。
+/// 登录或注册成功后进入大厅需要的首批数据。
+/// 以后增加大厅初始化数据时统一放在这里，不继续增加认证消息的参数。
 /// </summary>
 public sealed class LoginInitialData
 {
@@ -43,34 +43,12 @@ public sealed class LoginInitialData
 }
 
 /// <summary>
-/// 服务端返回的登录结果。
+/// 登录或注册成功后，服务端统一下发的认证成功消息。
 /// 只包含客户端需要的数据，不包含密码哈希和盐。
 /// </summary>
 [NetMessage(1203)]
-public sealed class LoginResponseMsg : BaseMsg
+public sealed class AuthSuccessMsg : BaseMsg
 {
     [NetField(1)]
-    public bool success;
-
-    [NetField(2)]
-    public string error = string.Empty;
-
-    [NetField(3)]
-    public LoginInitialData initialData;
-}
-
-/// <summary>
-/// 服务端返回的注册结果。
-/// </summary>
-[NetMessage(1204)]
-public sealed class RegisterResponseMsg : BaseMsg
-{
-    [NetField(1)]
-    public bool success;
-
-    [NetField(2)]
-    public string error = string.Empty;
-
-    [NetField(3)]
     public LoginInitialData initialData;
 }

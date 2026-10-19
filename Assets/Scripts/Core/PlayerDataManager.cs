@@ -10,6 +10,7 @@ public class PlayerDataManager : AppService
 
     public PlayerProfileData CurrentPlayerData { get; private set; }
     public PlayerSocialData CurrentFriendsData { get; private set; }
+    public PlayerProfileData SearchResult { get; private set; }
 
     protected override void OnInitialize()
     {
@@ -21,9 +22,33 @@ public class PlayerDataManager : AppService
         NetManager.Instance.Send(new RequestPlayerDataMsg { playerID = playerID });
     }
 
-    public void RequestFriendsData(int playerID)
+    public void RequestFriendsData()
     {
-        NetManager.Instance.Send(new RequestFriendsDataMsg { playerID = playerID });
+        NetManager.Instance.Send(new RequestFriendsDataMsg());
+    }
+
+    public void SearchPlayer(string account)
+    {
+        SearchResult = null;
+        NetManager.Instance.Send(new SearchPlayerRequestMsg { account = account.Trim() });
+    }
+
+    public void SendFriendRequest(int targetPlayerID, string message)
+    {
+        NetManager.Instance.Send(new SendFriendRequestMsg
+        {
+            targetPlayerID = targetPlayerID,
+            message = message.Trim(),
+        });
+    }
+
+    public void HandleFriendRequest(int senderPlayerID, bool accept)
+    {
+        NetManager.Instance.Send(new HandleFriendRequestMsg
+        {
+            senderPlayerID = senderPlayerID,
+            accept = accept,
+        });
     }
 
     /// <summary>
@@ -37,34 +62,41 @@ public class PlayerDataManager : AppService
 
     public void Receive(PlayerDataMsg msg)
     {
-        if (!msg.success)
-        {
-            CurrentPlayerData = null;
-            UIManager.Instance.Open(PanelId.Tip, msg.error);
-            return;
-        }
-
-        CurrentPlayerData = msg.data;
+        SearchResult = msg.data;
         Debug.Log($"收到玩家资料：{msg.data.account}，等级 {msg.data.level}");
     }
 
     public void Receive(FriendsDataMsg msg)
     {
+        CurrentFriendsData = msg.data;
+        Debug.Log($"收到好友数据：{msg.data.friends.Length} 名好友，{msg.data.friendRequests.Length} 条申请");
+    }
+
+    public void Receive(OperationResultMsg msg)
+    {
+        if (msg.operation == OperationType.SearchPlayer
+            || msg.operation == OperationType.RequestPlayerData)
+        {
+            SearchResult = null;
+        }
+
         if (!msg.success)
         {
-            CurrentFriendsData = null;
             UIManager.Instance.Open(PanelId.Tip, msg.error);
             return;
         }
 
-        CurrentFriendsData = msg.data;
-        Debug.Log($"收到好友数据：{msg.data.friends.Length} 名好友，{msg.data.friendRequests.Length} 条申请");
+        if (msg.operation == OperationType.SendFriendRequest)
+        {
+            UIManager.Instance.Open(PanelId.Tip, "好友申请已发送。");
+        }
     }
 
     protected override void OnShutdown()
     {
         CurrentPlayerData = null;
         CurrentFriendsData = null;
+        SearchResult = null;
         Instance = null;
     }
 }
