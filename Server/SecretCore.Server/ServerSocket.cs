@@ -7,15 +7,18 @@ public sealed class ServerSocket
     private readonly List<ClientSocket> clients = new List<ClientSocket>();
     private readonly AccountDataStore dataStore;
     private readonly WorldChatStore worldChatStore;
+    private readonly PrivateChatStore privateChatStore;
 
     private Socket? socket;
     private volatile bool isRunning;
     private long nextWorldChatMessageID;
+    private long nextPrivateChatMessageID;
 
     public ServerSocket(string dataDirectory)
     {
         dataStore = new AccountDataStore(dataDirectory);
         worldChatStore = new WorldChatStore(dataDirectory);
+        privateChatStore = new PrivateChatStore(dataDirectory);
     }
 
     public void Start(int port)
@@ -24,9 +27,11 @@ public sealed class ServerSocket
         NetSerializer.RegisterMessages(typeof(ServerSocket).Assembly);
         dataStore.Load();
         worldChatStore.Load();
+        privateChatStore.Load();
 
         // 接着历史里最大的消息编号继续发号，否则重启后新消息会和历史消息 ID 重复。
         nextWorldChatMessageID = worldChatStore.GetLatestMessageID();
+        nextPrivateChatMessageID = privateChatStore.GetLatestMessageID();
 
         Console.WriteLine("已载入世界聊天历史：" + worldChatStore.Count + " 条");
 
@@ -57,12 +62,11 @@ public sealed class ServerSocket
     public bool TrySendFriendRequest(
         int senderPlayerID,
         int targetPlayerID,
-        string message,
         out PlayerSocialData? targetSocialData,
         out string error)
     {
         return dataStore.TrySendFriendRequest(
-            senderPlayerID, targetPlayerID, message, out targetSocialData, out error);
+            senderPlayerID, targetPlayerID, out targetSocialData, out error);
     }
 
     public bool TryHandleFriendRequest(
@@ -141,6 +145,65 @@ public sealed class ServerSocket
         return worldChatStore.GetHistory();
     }
 
+    public PrivateChatData[] GetPrivateChatHistory(int playerID)
+    {
+        return privateChatStore.GetHistory(playerID);
+    }
+
+    public bool TryCreatePrivateChat(
+        int senderPlayerID,
+        int receiverPlayerID,
+        string content,
+        out PrivateChatData? data,
+        out string error)
+    {
+        content = content.Trim();
+
+        if (content.Length == 0)
+        {
+            data = null;
+            error = "消息内容不能为空。";
+            return false;
+        }
+
+        if (content.Length > 50)
+        {
+            data = null;
+            error = "好友消息最多输入 50 个字符。";
+            return false;
+        }
+
+        if (!dataStore.AreFriends(senderPlayerID, receiverPlayerID))
+        {
+            data = null;
+            error = "只能向好友发送消息。";
+            return false;
+        }
+
+        data = new PrivateChatData
+        {
+            messageID = Interlocked.Increment(ref nextPrivateChatMessageID),
+            senderPlayerID = senderPlayerID,
+            receiverPlayerID = receiverPlayerID,
+            content = content,
+            sendTime = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+        };
+        privateChatStore.Add(data);
+        error = string.Empty;
+        return true;
+    }
+
+    public void SendPrivateChatToPlayer(int playerID, PrivateChatData data)
+    {
+        ClientSocket? targetClient;
+        lock (clientLock)
+        {
+            targetClient = clients.FirstOrDefault(client => client.PlayerID == playerID);
+        }
+
+        targetClient?.Send(new PrivateChatMsg { data = data });
+    }
+
     public void BroadcastWorldChat(WorldChatMsg msg)
     {
         ClientSocket[] onlineClients;
@@ -183,6 +246,7 @@ public sealed class ServerSocket
 
         // 所有连接停止后，等待世界聊天保存队列中的任务全部写完再退出服务端。
         worldChatStore.Close();
+        privateChatStore.Close();
     }
 
     private void AcceptClients(object? state)

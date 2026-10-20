@@ -185,6 +185,15 @@ public sealed class AccountDataStore
         }
     }
 
+    public bool AreFriends(int firstPlayerID, int secondPlayerID)
+    {
+        lock (dataLock)
+        {
+            return socialData.TryGetValue(firstPlayerID, out PlayerSocialData? playerSocialData)
+                && playerSocialData.friends.Any(data => data.friendPlayerID == secondPlayerID);
+        }
+    }
+
     public bool TrySearchPlayer(string account, out PlayerProfileData? playerData, out string error)
     {
         account = account.Trim();
@@ -214,25 +223,15 @@ public sealed class AccountDataStore
     public bool TrySendFriendRequest(
         int senderPlayerID,
         int targetPlayerID,
-        string message,
         out PlayerSocialData? targetSocialData,
         out string error)
     {
-        message = message.Trim();
-
         lock (dataLock)
         {
             if (senderPlayerID == targetPlayerID)
             {
                 targetSocialData = null;
                 error = "不能添加自己为好友。";
-                return false;
-            }
-
-            if (message.Length > 50)
-            {
-                targetSocialData = null;
-                error = "好友申请留言最多输入 50 个字符。";
                 return false;
             }
 
@@ -271,7 +270,6 @@ public sealed class AccountDataStore
             requests.Add(new FriendRequestData
             {
                 senderPlayerID = senderPlayerID,
-                message = message,
                 createTime = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
             });
             targetSavedSocialData.friendRequests = requests.ToArray();
@@ -366,7 +364,6 @@ public sealed class AccountDataStore
             {
                 senderPlayerID = item.request.senderPlayerID,
                 senderData = item.account!.playerData,
-                message = item.request.message,
                 createTime = item.request.createTime,
             })
             .ToArray();

@@ -46,22 +46,16 @@ public class FriendRequestData
     public int senderPlayerID;
 
     /// <summary>
-    /// 申请时填写的验证信息。
-    /// </summary>
-    [NetField(2)]
-    public string message = string.Empty;
-
-    /// <summary>
     /// 申请创建时间。
     /// </summary>
-    [NetField(3)]
+    [NetField(2)]
     public long createTime;
 
     /// <summary>
     /// 根据 senderPlayerID 查询的最新公开资料，只用于网络下发，不写入 JSON。
     /// </summary>
     [JsonIgnore]
-    [NetField(4)]
+    [NetField(3)]
     public PlayerProfileData? senderData;
 }
 

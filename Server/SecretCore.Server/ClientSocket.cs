@@ -183,6 +183,12 @@ public sealed class ClientSocket
         if (msg is SendWorldChatMsg worldChatRequest)
         {
             HandleWorldChat(worldChatRequest);
+            return;
+        }
+
+        if (msg is SendPrivateChatMsg privateChatRequest)
+        {
+            HandlePrivateChat(privateChatRequest);
         }
     }
 
@@ -242,6 +248,7 @@ public sealed class ClientSocket
             playerData = playerData,
             socialData = socialData,
             worldChatHistory = server.GetWorldChatHistory(),
+            privateChatHistory = server.GetPrivateChatHistory(playerData!.playerID),
         };
     }
 
@@ -301,7 +308,7 @@ public sealed class ClientSocket
         }
 
         bool success = server.TrySendFriendRequest(
-            currentPlayer.playerID, request.targetPlayerID, request.message,
+            currentPlayer.playerID, request.targetPlayerID,
             out PlayerSocialData? targetSocialData, out string error);
 
         SendOperationResult(OperationType.SendFriendRequest, success, error);
@@ -388,5 +395,25 @@ public sealed class ClientSocket
             success = false,
             error = error,
         });
+    }
+
+    private void HandlePrivateChat(SendPrivateChatMsg request)
+    {
+        if (currentPlayer == null)
+        {
+            SendOperationResult(OperationType.SendPrivateChat, false, "登录后才能发送好友消息。");
+            return;
+        }
+
+        if (!server.TryCreatePrivateChat(
+                currentPlayer.playerID, request.receiverPlayerID, request.content,
+                out PrivateChatData? data, out string error))
+        {
+            SendOperationResult(OperationType.SendPrivateChat, false, error);
+            return;
+        }
+
+        Send(new PrivateChatMsg { data = data });
+        server.SendPrivateChatToPlayer(request.receiverPlayerID, data!);
     }
 }

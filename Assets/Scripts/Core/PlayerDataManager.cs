@@ -33,12 +33,11 @@ public class PlayerDataManager : AppService
         NetManager.Instance.Send(new SearchPlayerRequestMsg { account = account.Trim() });
     }
 
-    public void SendFriendRequest(int targetPlayerID, string message)
+    public void SendFriendRequest(int targetPlayerID)
     {
         NetManager.Instance.Send(new SendFriendRequestMsg
         {
             targetPlayerID = targetPlayerID,
-            message = message.Trim(),
         });
     }
 
@@ -63,12 +62,26 @@ public class PlayerDataManager : AppService
     public void Receive(PlayerDataMsg msg)
     {
         SearchResult = msg.data;
+
+        PrivateChatPanel panel = UIManager.Instance.GetOpenPanel<PrivateChatPanel>(PanelId.Chat);
+        if (panel != null)
+        {
+            panel.ShowSearchResult(msg.data);
+        }
+
         Debug.Log($"收到玩家资料：{msg.data.account}，等级 {msg.data.level}");
     }
 
     public void Receive(FriendsDataMsg msg)
     {
         CurrentFriendsData = msg.data;
+
+        LobbyPanel lobbyPanel = UIManager.Instance.GetOpenPanel<LobbyPanel>(PanelId.Lobby);
+        if (lobbyPanel != null)
+        {
+            lobbyPanel.RefreshFriendSidePanel();
+        }
+
         Debug.Log($"收到好友数据：{msg.data.friends.Length} 名好友，{msg.data.friendRequests.Length} 条申请");
     }
 
@@ -78,6 +91,12 @@ public class PlayerDataManager : AppService
             || msg.operation == OperationType.RequestPlayerData)
         {
             SearchResult = null;
+
+            PrivateChatPanel panel = UIManager.Instance.GetOpenPanel<PrivateChatPanel>(PanelId.Chat);
+            if (panel != null)
+            {
+                panel.ClearSearchResult();
+            }
         }
 
         if (!msg.success)

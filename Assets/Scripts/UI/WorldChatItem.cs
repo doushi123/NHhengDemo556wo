@@ -14,8 +14,15 @@ public sealed class WorldChatItem : MonoBehaviour
 
     public void SetData(WorldChatData data)
     {
-        senderText.text = data.senderAccount;
-        contentText.text = data.content;
-        timeText.text = DateTimeOffset.FromUnixTimeSeconds(data.sendTime).ToLocalTime().ToString("HH:mm");
+        SetData(data.senderAccount, data.content, data.sendTime);
+    }
+
+    public void SetData(string senderAccount, string content, long sendTime)
+    {
+        senderText.text = senderAccount;
+        contentText.text = content;
+        timeText.text = DateTimeOffset.FromUnixTimeSeconds(sendTime)
+            .ToLocalTime()
+            .ToString("yyyy.M.d  HH:mm");
     }
 }

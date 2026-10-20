@@ -45,7 +45,7 @@ public sealed class UIManager : AppService
     }
 
     /// <summary>
-    /// 获取已经创建并且当前打开的 Panel，不会创建或打开新的 Panel。
+    /// 获取已经创建并且当前打开的 Panel。
     /// </summary>
     public T GetOpenPanel<T>(PanelId id) where T : BasePanel
     {

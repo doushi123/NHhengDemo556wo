@@ -28,13 +28,35 @@ public sealed class SearchPlayerRequestMsg : BaseMsg
 
 public enum OperationType
 {
+    /// <summary>
+    /// 请求玩家数据
+    /// </summary>
     RequestPlayerData,
+    /// <summary>
+    /// 请求好友数据
+    /// </summary>
     RequestFriendsData,
+    /// <summary>
+    /// 查找玩家
+    /// </summary>
     SearchPlayer,
+    /// <summary>
+    /// 发送好友请求
+    /// </summary>
     SendFriendRequest,
+    /// <summary>
+    /// 处理好友请求
+    /// </summary>
     HandleFriendRequest,
+    /// <summary>
+    /// 登录
+    /// </summary>
     Login,
+    /// <summary>
+    /// 注册
+    /// </summary>
     Register,
+    SendPrivateChat,
 }
 
 /// <summary>
@@ -60,9 +82,6 @@ public sealed class SendFriendRequestMsg : BaseMsg
 {
     [NetField(1)]
     public int targetPlayerID;
-
-    [NetField(2)]
-    public string message = string.Empty;
 }
 
 /// <summary>
@@ -72,11 +91,13 @@ public sealed class SendFriendRequestMsg : BaseMsg
 public sealed class HandleFriendRequestMsg : BaseMsg
 {
     /// <summary>
-    /// 申请发送者的玩家 ID。服务端结合当前登录的接收者定位申请。
+    /// 申请发送者的玩家 ID。
     /// </summary>
     [NetField(1)]
     public int senderPlayerID;
-
+    /// <summary>
+    /// 是否同意好友申请
+    /// </summary>
     [NetField(2)]
     public bool accept;
 }

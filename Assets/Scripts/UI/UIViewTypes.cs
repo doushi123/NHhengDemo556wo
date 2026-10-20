@@ -6,7 +6,6 @@ public enum PanelId
     Friends,
     Chat,
     Settings,
-    ConfirmDialog,
     Loading,
     BattleHud,
     Tip,

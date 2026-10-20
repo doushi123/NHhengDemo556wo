@@ -8,7 +8,7 @@ using System;
 public class FriendRelationData
 {
     /// <summary>
-    /// 好友唯一的玩家 ID。
+    /// 好友唯一的ID。
     /// </summary>
     [NetField(1)]
     public int friendPlayerID;
@@ -45,21 +45,15 @@ public class FriendRequestData
     public int senderPlayerID;
 
     /// <summary>
-    /// 申请时填写的信息。
-    /// </summary>
-    [NetField(2)]
-    public string message = string.Empty;
-
-    /// <summary>
     /// 申请创建时间。
     /// </summary>
-    [NetField(3)]
+    [NetField(2)]
     public long createTime;
 
     /// <summary>
     /// 服务端根据 senderPlayerID 查询并下发的最新公开资料。
     /// </summary>
-    [NetField(4)]
+    [NetField(3)]
     public PlayerProfileData senderData;
 }
 

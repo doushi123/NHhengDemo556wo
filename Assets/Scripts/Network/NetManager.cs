@@ -256,6 +256,12 @@ public sealed class NetManager : AppService
                 return;
             }
 
+            if (operationResult.operation == OperationType.SendPrivateChat)
+            {
+                PrivateChatManager.Instance.Receive(operationResult);
+                return;
+            }
+
             PlayerDataManager.Instance.Receive(operationResult);
             return;
         }
@@ -263,6 +269,12 @@ public sealed class NetManager : AppService
         if (msg is WorldChatMsg worldChatMsg)
         {
             WorldChatManager.Instance.Receive(worldChatMsg);
+            return;
+        }
+
+        if (msg is PrivateChatMsg privateChatMsg)
+        {
+            PrivateChatManager.Instance.Receive(privateChatMsg);
         }
     }
 
@@ -273,6 +285,7 @@ public sealed class NetManager : AppService
     {
         PlayerDataManager.Instance.ApplyLoginData(initialData.playerData, initialData.socialData);
         WorldChatManager.Instance.ApplyHistory(initialData.worldChatHistory);
+        PrivateChatManager.Instance.ApplyHistory(initialData.privateChatHistory);
     }
 
     private void SendAll(byte[] bytes)

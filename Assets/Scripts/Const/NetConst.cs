@@ -18,6 +18,11 @@ public static class NetConst
     public const int MaxWorldChatCount = 50;
 
     /// <summary>
+    /// 客户端为每一位好友最多保留的私聊消息条数。
+    /// </summary>
+    public const int MaxPrivateChatCount = 100;
+
+    /// <summary>
     /// 服务端监听地址。目前固定本机
     /// </summary>
     public const string ServerIP = "127.0.0.1";

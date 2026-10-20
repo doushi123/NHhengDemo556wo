@@ -35,6 +35,7 @@ public enum OperationType
     HandleFriendRequest,
     Login,
     Register,
+    SendPrivateChat,
 }
 
 /// <summary>
@@ -58,9 +59,6 @@ public sealed class SendFriendRequestMsg : BaseMsg
 {
     [NetField(1)]
     public int targetPlayerID;
-
-    [NetField(2)]
-    public string message = string.Empty;
 }
 
 /// <summary>

@@ -38,6 +38,9 @@ public sealed class LoginInitialData
 
     [NetField(3)]
     public WorldChatData[] worldChatHistory = Array.Empty<WorldChatData>();
+
+    [NetField(4)]
+    public PrivateChatData[] privateChatHistory = Array.Empty<PrivateChatData>();
 }
 
 /// <summary>

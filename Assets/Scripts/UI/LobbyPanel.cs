@@ -5,14 +5,15 @@ using UnityEngine.UI;
 
 public class LobbyPanel : BasePanel
 {
-    [SerializeField]
-    private Button exitBtn;
-    [SerializeField]
-    private Button friendBtn;
+    [SerializeField] private Button exitBtn;
+    [SerializeField] private Button friendBtn;
+    [SerializeField] private Button sideCloseBtn;
+    [SerializeField] private GameObject FriendSideBg;
+    [SerializeField] private FriendSidePanel friendSidePanel;
     [SerializeField] private GameObject chatBg;
     [SerializeField] private Button chatBtn;
     [SerializeField] private Button chatWorldCloseBtn;
-    [SerializeField]private Button[] modeBtns;
+    [SerializeField] private Button[] modeBtns;
 
     [Header("世界聊天")]
     [SerializeField] private TMP_InputField chatInput;
@@ -28,11 +29,20 @@ public class LobbyPanel : BasePanel
     private void Start()
     {
         chatBg.SetActive(false);
+        FriendSideBg.SetActive(false);
         exitBtn.onClick.AddListener(() =>
         {
             Application.Quit();
         });
-
+        friendBtn.onClick.AddListener(() =>
+        {
+            FriendSideBg.SetActive(true);
+        });
+        sideCloseBtn.onClick.AddListener(() =>
+        {
+            FriendSideBg.SetActive(false);
+            UIManager.Instance.Close(PanelId.Chat);
+        });
         sendBtn.onClick.AddListener(OnClickSendWorldChat);
         chatBtn.onClick.AddListener(() =>
         {
@@ -105,6 +115,14 @@ public class LobbyPanel : BasePanel
         ScrollWorldChatToBottom();
     }
 
+    /// <summary>
+    /// 好友数据变化后刷新侧边栏当前正在显示的页签。
+    /// </summary>
+    public void RefreshFriendSidePanel()
+    {
+        friendSidePanel.RefreshCurrentPage();
+    }
+
     private void CreateWorldChatItem(WorldChatData data)
     {
         bool isOwnMessage = data.senderPlayerID == PlayerDataManager.Instance.CurrentPlayerData.playerID;
@@ -116,6 +134,7 @@ public class LobbyPanel : BasePanel
 
     private void ScrollWorldChatToBottom()
     {
+        Canvas.ForceUpdateCanvases();
         LayoutRebuilder.ForceRebuildLayoutImmediate(worldChatContent);
         worldChatScrollRect.verticalNormalizedPosition = 0f;
     }
