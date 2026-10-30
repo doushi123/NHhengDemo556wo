@@ -33,6 +33,11 @@ public static class NetConst
     public const int ServerPort = 7777;
 
     /// <summary>
+    /// KCP 战斗服务端口。
+    /// </summary>
+    public const ushort BattlePort = 7778;
+
+    /// <summary>
     /// 世界消息频道，一次消息输入的最多字符数
     /// </summary>
     public const int MaxChatCount=50;

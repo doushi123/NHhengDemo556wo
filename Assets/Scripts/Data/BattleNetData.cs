@@ -39,6 +39,31 @@ public enum BattleAuthResult : byte
 }
 
 /// <summary>
+/// KCP 战斗消息的类型编号。
+/// 每个战斗包的第一个字节都是该枚举，接收端据此选择对应的解码方法。
+/// </summary>
+public enum BattlePacketType : byte
+{
+    /// <summary>
+    /// 客户端发给服务端的战斗认证消息
+    /// </summary>
+    Auth = 1,
+    /// <summary>
+    /// 服务端返回给客户端的战斗认证结果
+    /// 校验battleToken，并返回认证结果
+    /// </summary>
+    AuthResult = 2,
+    /// <summary>
+    /// 服务端向客户端下发战斗的初始化数据
+    /// </summary>
+    Init = 3,
+    /// <summary>
+    /// 客户端向服务端上传的一帧本地操作
+    /// </summary>
+    PlayerInput = 4,
+}
+
+/// <summary>
 /// KCP 连接建立后，客户端发送的第一条业务消息。
 /// </summary>
 public struct BattleAuthPacket
@@ -104,14 +129,9 @@ public struct BattleSeatData
 {
     /// <summary>
     /// 占用该席位的真人玩家 ID。
-    /// 电脑英雄没有账号，固定使用 0，并由 seatIndex 唯一定位。
+    /// 电脑英雄没有账号，固定使用 0，并由 seats 数组下标唯一定位。
     /// </summary>
     public int playerID;
-
-    /// <summary>
-    /// 英雄席位编号，范围为 0～3。
-    /// </summary>
-    public byte seatIndex;
 
     /// <summary>
     /// 该英雄所属的阵营。
