@@ -1,0 +1,12 @@
+{
+  "name": "com.secretcore.kcp2k",
+  "version": "1.0.0",
+  "displayName": "kcp2k Runtime",
+  "description": "Embedded kcp2k runtime pinned to upstream commit 66efda6686f649838d42f078fbaabf56ac449de4.",
+  "unity": "2022.3",
+  "author": {
+    "name": "Mirror Networking contributors",
+    "url": "https://github.com/MirrorNetworking/kcp2k"
+  },
+  "license": "MIT"
+}

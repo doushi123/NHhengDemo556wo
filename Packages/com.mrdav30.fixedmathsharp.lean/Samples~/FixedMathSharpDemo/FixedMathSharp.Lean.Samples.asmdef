@@ -1,0 +1,16 @@
+{
+    "name": "FixedMathSharp.Lean.Samples",
+    "rootNamespace": "FixedMathSharp.Lean.Samples",
+    "references": [
+        "FixedMathSharp.Lean.Runtime"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": false,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

@@ -16,6 +16,18 @@
         "com.unity.test-framework": "1.1.31"
       }
     },
+    "com.mrdav30.fixedmathsharp.lean": {
+      "version": "file:com.mrdav30.fixedmathsharp.lean",
+      "depth": 0,
+      "source": "embedded",
+      "dependencies": {}
+    },
+    "com.secretcore.kcp2k": {
+      "version": "file:com.secretcore.kcp2k",
+      "depth": 0,
+      "source": "embedded",
+      "dependencies": {}
+    },
     "com.unity.2d.sprite": {
       "version": "1.0.0",
       "depth": 0,
