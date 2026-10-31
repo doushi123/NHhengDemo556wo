@@ -1,11 +1,14 @@
 string dataDirectory = GetDataDirectory();
 ServerSocket serverSocket = new ServerSocket(dataDirectory);
+BattleKcpServer battleServer = new BattleKcpServer();
 serverSocket.Start(7777);
+battleServer.Start(7778);
 
 Console.WriteLine("服务端已启动，按回车键关闭。");
 Console.WriteLine("存档目录：" + dataDirectory);
 Console.ReadLine();
 
+battleServer.Close();
 serverSocket.Close();
 
 static string GetDataDirectory()
