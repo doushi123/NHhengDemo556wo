@@ -9,7 +9,8 @@ public static class BattleConst
     public const int SeatCount = 4;
 
     /// <summary>
-    /// 战斗 Token 经过 UTF-8 编码后允许占用的最大字节数。
+    /// 服务端生成战斗 Token 时使用的随机字节数。
     /// </summary>
-    public const int MaxTokenBytes = 256;
+    public const int TokenRandomBytes = 16;
+
 }
