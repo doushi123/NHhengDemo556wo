@@ -26,16 +26,26 @@ public enum PlayerOnlineState
 /// </summary>
 public class PlayerProfileData
 {
+    /// <summary>
+    /// 玩家唯一 ID。
+    /// </summary>
     [NetField(1)]
     public int playerID;
 
+    /// <summary>
+    /// 账户名，同时作为当前玩家对外显示的名称。
+    /// </summary>
     [NetField(2)]
     public string account = string.Empty;
 
+    /// <summary>
+    /// 玩家当前所在的在线状态。
+    /// </summary>
     [NetField(3)]
     public PlayerOnlineState state;
+
     /// <summary>
-    /// 等级
+    /// 玩家当前等级。
     /// </summary>
     [NetField(4)]
     public int level;
