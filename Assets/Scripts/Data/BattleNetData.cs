@@ -145,6 +145,13 @@ public struct BattleInitData
     /// </summary>
     [NetField(5)]
     public BattleSeatData[] seats;
+
+    /// <summary>
+    /// 服务端当前使用的战斗配置 Hash。
+    /// 客户端进入战斗前用它核对本地配置是否一致。
+    /// </summary>
+    [NetField(6)]
+    public string configHash;
 }
 
 /// <summary>
