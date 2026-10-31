@@ -1,19 +1,33 @@
 public class AccountData
 {
     /// <summary>
-    /// 账户名  
+    /// 账户名，同时作为玩家对外显示的名称。
     /// </summary>
     public string account;
-    public string passwordHash;
-    public string passwordSalt;
+
     /// <summary>
-    /// 账号创建时间
+    /// 使用密码哈希算法生成的密码摘要，不保存明文密码。
+    /// </summary>
+    public string passwordHash;
+
+    /// <summary>
+    /// 生成密码哈希时使用的随机盐。
+    /// </summary>
+    public string passwordSalt;
+
+    /// <summary>
+    /// 账号创建时间，Unix 时间戳。
     /// </summary>
     public long createTime;
+
     /// <summary>
-    /// 最后登录时间
+    /// 最后登录时间，Unix 时间戳。
     /// </summary>
     public long lastLoginTime;
+
+    /// <summary>
+    /// 当前账号对应的玩家资料。
+    /// </summary>
     public PlayerProfileData playerData = new PlayerProfileData();
 }
 
