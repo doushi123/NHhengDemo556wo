@@ -35,14 +35,28 @@ public sealed class HeroConfigData
     public int maxHp;
 
     /// <summary>
-    /// 移动速度，厘米/秒。
+    /// 走路速度，单位为米/秒。
     /// </summary>
-    public int moveSpeed;
+    public float moveSpeed;
 
     /// <summary>
-    /// 碰撞半径，单位为厘米。
+    /// 跑步速度，单位为米/秒。
     /// </summary>
-    public int collisionRadius;
+    public float runSpeed;
+
+    /// <summary>
+    /// 碰撞半径，单位为米。
+    /// </summary>
+    public float collisionRadius;
+
+    /// <summary>站立碰撞体的完整高度，单位为米；模型根节点按脚底对齐。</summary>
+    public float collisionHeight = 1.8f;
+
+    /// <summary>能够直接跨上的台阶最大高度，单位为米。</summary>
+    public float stepHeight = 0.35f;
+
+    /// <summary>可正常行走的最大坡度，单位为度；更陡的表面按滑动处理。</summary>
+    public float maxSlope = 45f;
 
     /// <summary>
     /// 技能一使用的技能 ID；0 表示尚未配置。
@@ -115,9 +129,9 @@ public sealed class SkillConfigData
     public int damage;
 
     /// <summary>
-    /// 技能有效距离，单位为厘米。
+    /// 技能有效距离，单位为米。
     /// </summary>
-    public int range;
+    public float range;
 
     /// <summary>
     /// 技能作用角度，单位为度。
@@ -125,8 +139,8 @@ public sealed class SkillConfigData
     public int angle;
 
     /// <summary>
-    /// 技能产生的位移距离，单位为厘米。
+    /// 技能产生的位移距离，单位为米。
     /// </summary>
-    public int moveDistance;
+    public float moveDistance;
 
 }

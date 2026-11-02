@@ -61,6 +61,9 @@ public enum BattlePacketType
     /// 客户端向服务端上传的一帧本地操作
     /// </summary>
     PlayerInput = 4,
+
+    /// <summary>服务端确认并广播给所有客户端的一帧操作。</summary>
+    AuthorityFrame = 5,
 }
 
 /// <summary>
@@ -152,6 +155,10 @@ public struct BattleInitData
     /// </summary>
     [NetField(6)]
     public string configHash;
+
+    /// <summary>服务端地图文件的 Hash；客户端开局前核对本地地图。</summary>
+    [NetField(7)]
+    public string mapHash;
 }
 
 /// <summary>
@@ -171,6 +178,19 @@ public struct BattleSeatData
     /// </summary>
     [NetField(2)]
     public BattleCamp camp;
+
+
+    /// <summary>本席位脚底的开局 X 坐标，单位为米。</summary>
+    [NetField(3)]
+    public float spawnX;
+
+    /// <summary>本席位脚底的开局 Z 坐标，单位为米。</summary>
+    [NetField(4)]
+    public float spawnZ;
+
+    /// <summary>本席位脚底的开局高度，单位为米；不是碰撞体中心高度。</summary>
+    [NetField(5)]
+    public float spawnY;
 }
 
 /// <summary>
@@ -210,7 +230,6 @@ public enum BattleButtons
 
 /// <summary>
 /// 一个英雄席位在单个逻辑帧中的操作输入。
-/// 这里只记录玩家想做什么。
 /// </summary>
 public struct BattleInput
 {
@@ -225,6 +244,10 @@ public struct BattleInput
     /// </summary>
     [NetField(2)]
     public int moveY;
+
+    /// <summary>当前帧是否按住跑步键。</summary>
+    [NetField(5)]
+    public bool isRunning;
 
     /// <summary>
     /// 水平面朝向角。0 表示世界前方，0～360 度映射到 0～65535。
@@ -256,4 +279,17 @@ public struct PlayerInputPacket
     /// </summary>
     [NetField(2)]
     public BattleInput input;
+}
+
+/// <summary>服务端最终确定的一帧输入。</summary>
+[BattlePacket(BattlePacketType.AuthorityFrame)]
+public struct AuthorityFramePacket
+{
+    /// <summary>服务端确认的逻辑帧编号，从 0 开始连续递增。</summary>
+    [NetField(1)]
+    public int frame;
+
+    /// <summary>四个席位在这一帧最终执行的输入，数组下标就是席位编号。</summary>
+    [NetField(2)]
+    public BattleInput[] inputs;
 }

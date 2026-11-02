@@ -7,6 +7,9 @@ public static class BattleConst
     /// 确定性战斗每秒推进的逻辑帧数量。
     /// </summary>
     public const int LogicFrameRate = 20;
+
+    /// <summary>输入提前发送到未来的逻辑帧，给 KCP 传输留出时间。</summary>
+    public const int InputDelayFrames = 2;
     /// <summary>
     /// 所有英雄共用的普通攻击技能 ID。
     /// </summary>
@@ -31,4 +34,5 @@ public static class BattleConst
     /// 服务端生成战斗 Token 时使用的随机字节数。
     /// </summary>
     public const int TokenRandomBytes = 16;
+
 }
