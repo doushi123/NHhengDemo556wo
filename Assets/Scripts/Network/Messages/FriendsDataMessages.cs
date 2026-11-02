@@ -26,54 +26,6 @@ public sealed class SearchPlayerRequestMsg : BaseMsg
     public string account = string.Empty;
 }
 
-public enum OperationType
-{
-    /// <summary>
-    /// 请求玩家数据
-    /// </summary>
-    RequestPlayerData,
-    /// <summary>
-    /// 请求好友数据
-    /// </summary>
-    RequestFriendsData,
-    /// <summary>
-    /// 查找玩家
-    /// </summary>
-    SearchPlayer,
-    /// <summary>
-    /// 发送好友请求
-    /// </summary>
-    SendFriendRequest,
-    /// <summary>
-    /// 处理好友请求
-    /// </summary>
-    HandleFriendRequest,
-    /// <summary>
-    /// 登录
-    /// </summary>
-    Login,
-    /// <summary>
-    /// 注册
-    /// </summary>
-    Register,
-    SendPrivateChat,
-}
-
-/// <summary>
-/// 没有额外返回数据的操作结果，以及数据请求失败时的统一错误结果。
-/// </summary>
-[NetMessage(1104)]
-public sealed class OperationResultMsg : BaseMsg
-{
-    [NetField(1)]
-    public OperationType operation;
-
-    [NetField(2)]
-    public bool success;
-
-    [NetField(3)]
-    public string error = string.Empty;
-}
 /// <summary>
 /// 发送好友申请的消息类
 /// </summary>
