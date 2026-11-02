@@ -25,6 +25,8 @@ public sealed class NetManager : AppService
     private int cacheNum;
     private volatile bool isConnected;
     private string pendingTip;
+    // 网络线程只标记断线；主线程停止旧线程、清理队列并通知房间管理器。
+    private int pendingDisconnect;
 
     public bool IsConnected => isConnected;
 
@@ -38,6 +40,11 @@ public sealed class NetManager : AppService
 
     private void Update()
     {
+        if (ResetDisconnected())
+        {
+            RoomManager.Instance.Clear();
+        }
+
         while (receiveMsgQueue.TryDequeue(out BaseMsg msg))
         {
             HandleMessage(msg);
@@ -56,6 +63,13 @@ public sealed class NetManager : AppService
         {
             return;
         }
+
+        // 旧连接的消息不能在重连后被当成新连接的房间数据继续处理。
+        if (ResetDisconnected())
+        {
+            RoomManager.Instance.Clear();
+        }
+        Interlocked.Exchange(ref pendingTip, null);
 
         socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
 
@@ -108,29 +122,52 @@ public sealed class NetManager : AppService
 
     public void Close()
     {
+        Interlocked.Exchange(ref pendingDisconnect, 1);
         isConnected = false;
         sendSignal.Set();
 
-        if (socket != null)
+        Socket currentSocket = Interlocked.Exchange(ref socket, null);
+        if (currentSocket != null)
         {
             try
             {
-                socket.Shutdown(SocketShutdown.Both);
+                currentSocket.Shutdown(SocketShutdown.Both);
             }
             catch (SocketException)
             {
             }
 
-            socket.Close();
-            socket = null;
+            currentSocket.Close();
+        }
+    }
+
+    /// <summary>主线程等待已关闭连接的工作线程结束，再丢弃旧消息与半包缓存。</summary>
+    private bool ResetDisconnected()
+    {
+        if (Volatile.Read(ref pendingDisconnect) == 0)
+        {
+            return false;
         }
 
+        sendThread?.Join();
+        receiveThread?.Join();
+        sendThread = null;
+        receiveThread = null;
+        while (sendMsgQueue.TryDequeue(out _))
+        {
+        }
+        while (receiveMsgQueue.TryDequeue(out _))
+        {
+        }
         cacheNum = 0;
+        Interlocked.Exchange(ref pendingDisconnect, 0);
+        return true;
     }
 
     protected override void OnShutdown()
     {
         Close();
+        ResetDisconnected();
         Instance = null;
     }
 
@@ -151,7 +188,10 @@ public sealed class NetManager : AppService
         }
         catch (Exception)
         {
-            DisconnectFromWorker("与服务器的连接已中断。");
+            if (isConnected)
+            {
+                DisconnectFromWorker("与服务器的连接已中断。");
+            }
         }
     }
 
@@ -164,7 +204,10 @@ public sealed class NetManager : AppService
                 int receiveNum = socket.Receive(receiveBytes);
                 if (receiveNum == 0)
                 {
-                    DisconnectFromWorker("服务端已断开连接。");
+                    if (isConnected)
+                    {
+                        DisconnectFromWorker("服务端已断开连接。");
+                    }
                     return;
                 }
 
@@ -241,6 +284,18 @@ public sealed class NetManager : AppService
             return;
         }
 
+        if (msg is RoomDataMsg roomData)
+        {
+            RoomManager.Instance.Receive(roomData);
+            return;
+        }
+
+        if (msg is RoomLeftMsg roomLeft)
+        {
+            RoomManager.Instance.Receive(roomLeft);
+            return;
+        }
+
         if (msg is PlayerDataMsg playerDataMsg)
         {
             PlayerDataManager.Instance.Receive(playerDataMsg);
@@ -255,6 +310,15 @@ public sealed class NetManager : AppService
 
         if (msg is OperationResultMsg operationResult)
         {
+            if (operationResult.operation == OperationType.CreateRoom
+                || operationResult.operation == OperationType.JoinRoom
+                || operationResult.operation == OperationType.LeaveRoom
+                || operationResult.operation == OperationType.StartBattle)
+            {
+                RoomManager.Instance.Receive(operationResult);
+                return;
+            }
+
             if (operationResult.operation == OperationType.Login
                 || operationResult.operation == OperationType.Register)
             {
