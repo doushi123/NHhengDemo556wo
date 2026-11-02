@@ -235,6 +235,12 @@ public sealed class NetManager : AppService
             return;
         }
 
+        if (msg is BattleTestTokenMsg battleTestToken)
+        {
+            BattleTestRunner.ReceiveToken(battleTestToken);
+            return;
+        }
+
         if (msg is PlayerDataMsg playerDataMsg)
         {
             PlayerDataManager.Instance.Receive(playerDataMsg);

@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -17,6 +18,9 @@ public static class BootstrapLoader
     /// 防止 Bootstrap 尚未加载完成时重复发起加载。
     /// </summary>
     private static bool loadingBootstrap;
+
+    // 只记录本次启动时暂停的角色，管理器就绪后恢复；不改变原本禁用的角色。
+    private static readonly List<PlayerController> pausedPlayers = new List<PlayerController>();
 
     /// <summary>
     /// 首个场景加载完成后检查全局初始化状态。
@@ -44,6 +48,14 @@ public static class BootstrapLoader
 
         targetScene = currentScene;
         loadingBootstrap = true;
+        foreach (PlayerController player in Object.FindObjectsOfType<PlayerController>())
+        {
+            if (player.enabled)
+            {
+                pausedPlayers.Add(player);
+                player.enabled = false;
+            }
+        }
         SceneManager.sceneLoaded += OnBootstrapLoaded;
         SceneManager.LoadSceneAsync(BootstrapSceneName, LoadSceneMode.Additive);
     }
@@ -67,10 +79,27 @@ public static class BootstrapLoader
             return;
         }
 
+        // 启动配置缺少角色必需的服务时在入口明确报错，不让业务每帧静默跳过。
+        if (BattleNetManager.Instance == null || !BattleNetManager.Instance.IsInitialized)
+        {
+            Debug.LogError("Bootstrap 未初始化 BattleNetManager，请检查 AppRoot 的服务列表。角色保持暂停。");
+            return;
+        }
+
         if (targetScene.IsValid() && targetScene.isLoaded)
         {
             SceneManager.SetActiveScene(targetScene);
         }
+
+        foreach (PlayerController player in pausedPlayers)
+        {
+            // 加载期间角色可能随场景被销毁，只恢复仍存在的对象。
+            if (player != null)
+            {
+                player.enabled = true;
+            }
+        }
+        pausedPlayers.Clear();
 
         SceneManager.UnloadSceneAsync(loadedScene);
     }
