@@ -10,7 +10,7 @@ public sealed class WorldChatManager : AppService
     /// <summary>
     /// 接收到的世界消息列表
     /// </summary>
-    private readonly List<WorldChatData> messages = new List<WorldChatData>();
+    private List<WorldChatData> messages = new List<WorldChatData>();
     /// <summary>
     /// 外部只能读取
     /// </summary>

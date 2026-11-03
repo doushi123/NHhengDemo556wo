@@ -8,8 +8,8 @@ public sealed class UIManager : AppService
     [SerializeField] private Transform uiRoot;
     [SerializeField] private List<BasePanel> panelPrefabs = new List<BasePanel>();
 
-    private readonly Dictionary<PanelId, BasePanel> prefabs = new Dictionary<PanelId, BasePanel>();
-    private readonly Dictionary<PanelId, BasePanel> instances = new Dictionary<PanelId, BasePanel>();
+    private Dictionary<PanelId, BasePanel> prefabs = new Dictionary<PanelId, BasePanel>();
+    private Dictionary<PanelId, BasePanel> instances = new Dictionary<PanelId, BasePanel>();
 
     protected override void OnInitialize()
     {

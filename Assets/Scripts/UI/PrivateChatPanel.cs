@@ -22,7 +22,7 @@ public class PrivateChatPanel : BasePanel
     [SerializeField] private WorldChatItem otherMessagePrefab;
     [SerializeField] private FriendRequestItem searchResultPrefab;
 
-    private readonly List<GameObject> currentItems = new List<GameObject>();
+    private List<GameObject> currentItems = new List<GameObject>();
     private FriendRelationData friendData;
     /// <summary>
     /// 是否为搜索状态

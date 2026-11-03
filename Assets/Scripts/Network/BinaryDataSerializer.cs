@@ -13,7 +13,7 @@ public static class BinaryDataSerializer
     /// <summary>
     /// 网络字段缓存容器。
     /// </summary>
-    private static readonly ConcurrentDictionary<Type, FieldInfo[]> concurDic =
+    private static ConcurrentDictionary<Type, FieldInfo[]> concurDic =
         new ConcurrentDictionary<Type, FieldInfo[]>();
 
     /// <summary>

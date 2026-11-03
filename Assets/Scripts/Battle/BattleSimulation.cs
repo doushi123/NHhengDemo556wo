@@ -8,12 +8,12 @@ using FixMath.NET;
 /// </summary>
 public sealed class BattleSimulation
 {
-    private readonly BattlePhysics physics;
-    private readonly Fix64 walkSpeed;
-    private readonly Fix64 runSpeed;
+    private BattlePhysics physics;
+    private Fix64 walkSpeed;
+    private Fix64 runSpeed;
     // 数组下标就是席位编号；四个角色在同一个物理世界中。
-    private readonly CharacterController[] players = new CharacterController[BattleConst.SeatCount];
-    private readonly BattleInput[] lastInputs = new BattleInput[BattleConst.SeatCount];
+    private CharacterController[] players = new CharacterController[BattleConst.SeatCount];
+    private BattleInput[] lastInputs = new BattleInput[BattleConst.SeatCount];
 
     /// <summary>已经执行的最后一帧；开局前为 -1。</summary>
     public int Frame { get; private set; } = -1;

@@ -9,15 +9,15 @@ public sealed class NetManager : AppService
 {
     public static NetManager Instance { get; private set; }
 
-    private readonly ConcurrentQueue<BaseMsg> sendMsgQueue = new ConcurrentQueue<BaseMsg>();
-    private readonly ConcurrentQueue<BaseMsg> receiveMsgQueue = new ConcurrentQueue<BaseMsg>();
+    private ConcurrentQueue<BaseMsg> sendMsgQueue = new ConcurrentQueue<BaseMsg>();
+    private ConcurrentQueue<BaseMsg> receiveMsgQueue = new ConcurrentQueue<BaseMsg>();
     /// <summary>
     /// 用于唤醒线程
     /// </summary>
-    private readonly AutoResetEvent sendSignal = new AutoResetEvent(false);
+    private AutoResetEvent sendSignal = new AutoResetEvent(false);
 
-    private readonly byte[] receiveBytes = new byte[8192];
-    private readonly byte[] cacheBytes = new byte[NetConst.MaxMessageBodySize + 8];
+    private byte[] receiveBytes = new byte[8192];
+    private byte[] cacheBytes = new byte[NetConst.MaxMessageBodySize + 8];
 
     private Socket socket;
     private Thread sendThread;

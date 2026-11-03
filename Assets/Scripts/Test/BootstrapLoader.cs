@@ -20,7 +20,7 @@ public static class BootstrapLoader
     private static bool loadingBootstrap;
 
     // 只记录本次启动时暂停的角色，管理器就绪后恢复；不改变原本禁用的角色。
-    private static readonly List<PlayerController> pausedPlayers = new List<PlayerController>();
+    private static List<PlayerController> pausedPlayers = new List<PlayerController>();
 
     /// <summary>
     /// 首个场景加载完成后检查全局初始化状态。

@@ -12,7 +12,7 @@ public static class BattlePacketCodec
     /// <summary>
     /// 战斗消息类型缓存容器。
     /// </summary>
-    private static readonly ConcurrentDictionary<Type, BattlePacketType> concurDic =
+    private static ConcurrentDictionary<Type, BattlePacketType> concurDic =
         new ConcurrentDictionary<Type, BattlePacketType>();
 
     /// <summary>

@@ -13,13 +13,13 @@ public static class NetSerializer
     /// <summary>
     /// 发送消息的容器。
     /// </summary>
-    private static readonly ConcurrentDictionary<Type, int> messageIDCache =
+    private static ConcurrentDictionary<Type, int> messageIDCache =
         new ConcurrentDictionary<Type, int>();
 
     /// <summary>
     /// 接收消息的容器。
     /// </summary>
-    private static readonly ConcurrentDictionary<int, Type> messageTypeCache =
+    private static ConcurrentDictionary<int, Type> messageTypeCache =
         new ConcurrentDictionary<int, Type>();
 
     /// <summary>

@@ -24,7 +24,7 @@ public class LobbyPanel : BasePanel
     [SerializeField] private WorldChatItem ownMessagePrefab;
     [SerializeField] private WorldChatItem otherMessagePrefab;
 
-    private readonly List<WorldChatItem> messageItems = new List<WorldChatItem>();
+    private List<WorldChatItem> messageItems = new List<WorldChatItem>();
 
     private void Start()
     {

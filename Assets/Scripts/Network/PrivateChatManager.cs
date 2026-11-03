@@ -9,7 +9,7 @@ public sealed class PrivateChatManager : AppService
     /// <summary>
     /// 储存和好友之间对话消息的容器
     /// </summary>
-    private readonly Dictionary<int, List<PrivateChatData>> conversations =new Dictionary<int, List<PrivateChatData>>();
+    private Dictionary<int, List<PrivateChatData>> conversations =new Dictionary<int, List<PrivateChatData>>();
 
     protected override void OnInitialize()
     {

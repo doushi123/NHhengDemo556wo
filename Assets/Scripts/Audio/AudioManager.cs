@@ -10,8 +10,8 @@ public sealed class AudioManager : AppService
     [SerializeField] private AudioSource musicSource;
     [SerializeField] private AudioSource soundSource;
 
-    private readonly Dictionary<string, MusicConfig> music =new Dictionary<string, MusicConfig>();
-    private readonly Dictionary<string, SoundConfig> sounds =new Dictionary<string, SoundConfig>();
+    private Dictionary<string, MusicConfig> music =new Dictionary<string, MusicConfig>();
+    private Dictionary<string, SoundConfig> sounds =new Dictionary<string, SoundConfig>();
 
     private MusicConfig currentMusic;
     private float musicVolume = 1f;

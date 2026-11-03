@@ -9,8 +9,8 @@ using FixMath.NET;
 /// <summary>建立地图碰撞和角色身体</summary>
 public sealed class BattlePhysics
 {
-    private readonly Vector3 min;
-    private readonly Vector3 max;
+    private Vector3 min;
+    private Vector3 max;
 
     public int mapID { get; }
     /// <summary>

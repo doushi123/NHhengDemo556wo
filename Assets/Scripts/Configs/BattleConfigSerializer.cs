@@ -14,7 +14,7 @@ using System.Text.Json;
 public static class BattleConfigSerializer
 {
 #if !UNITY_5_3_OR_NEWER
-    private static readonly JsonSerializerOptions JsonOptions =
+    private static JsonSerializerOptions JsonOptions =
         new JsonSerializerOptions
         {
             IncludeFields = true,

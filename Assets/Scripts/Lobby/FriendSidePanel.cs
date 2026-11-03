@@ -21,7 +21,7 @@ public class FriendSidePanel : MonoBehaviour
     [SerializeField]
     private FriendRequestItem friendRequestItemPrefab;
 
-    private readonly List<GameObject> currentItems = new List<GameObject>();
+    private List<GameObject> currentItems = new List<GameObject>();
     private bool isShowingRequests;
     private bool initialized;
 
