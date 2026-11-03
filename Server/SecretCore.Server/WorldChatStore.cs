@@ -13,17 +13,17 @@ public sealed class WorldChatStore
     /// </summary>
     public const int MaxWorldChatCount = 50;
 
-    private readonly object dataLock = new object();
-    private readonly string historyPath;
-    private readonly BlockingCollection<WorldChatData[]> saveQueue = new BlockingCollection<WorldChatData[]>();
-    private readonly Thread saveThread;
-    private readonly JsonSerializerOptions jsonOptions = new JsonSerializerOptions
+    private object dataLock = new object();
+    private string historyPath;
+    private BlockingCollection<WorldChatData[]> saveQueue = new BlockingCollection<WorldChatData[]>();
+    private Thread saveThread;
+    private JsonSerializerOptions jsonOptions = new JsonSerializerOptions
     {
         IncludeFields = true,
         WriteIndented = true,
     };
 
-    private readonly Queue<WorldChatData> messages = new Queue<WorldChatData>();
+    private Queue<WorldChatData> messages = new Queue<WorldChatData>();
     private bool isClosed;
 
     public WorldChatStore(string dataDirectory)

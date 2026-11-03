@@ -8,14 +8,14 @@ public sealed class PrivateChatStore
 {
     public const int MaxPrivateChatCount = 100;
 
-    private readonly object dataLock = new object();
-    private readonly string historyPath;
-    private readonly Dictionary<string, List<PrivateChatData>> conversations =
+    private object dataLock = new object();
+    private string historyPath;
+    private Dictionary<string, List<PrivateChatData>> conversations =
         new Dictionary<string, List<PrivateChatData>>();
-    private readonly BlockingCollection<Dictionary<string, PrivateChatData[]>> saveQueue =
+    private BlockingCollection<Dictionary<string, PrivateChatData[]>> saveQueue =
         new BlockingCollection<Dictionary<string, PrivateChatData[]>>();
-    private readonly Thread saveThread;
-    private readonly JsonSerializerOptions jsonOptions = new JsonSerializerOptions
+    private Thread saveThread;
+    private JsonSerializerOptions jsonOptions = new JsonSerializerOptions
     {
         IncludeFields = true,
         WriteIndented = true,

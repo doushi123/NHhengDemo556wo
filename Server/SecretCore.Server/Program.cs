@@ -1,6 +1,6 @@
 string dataDirectory = GetDataDirectory();
-ServerSocket serverSocket = new ServerSocket(dataDirectory);
 BattleKcpServer battleServer = new BattleKcpServer();
+ServerSocket serverSocket = new ServerSocket(dataDirectory, battleServer);
 serverSocket.Start(7777);
 battleServer.Start(7778);
 

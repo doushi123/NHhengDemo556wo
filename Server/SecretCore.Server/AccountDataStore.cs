@@ -9,10 +9,10 @@ public sealed class AccountDataStore
     private const int FirstPlayerID = 10001;
     private const int PasswordIterations = 100000;
 
-    private readonly object dataLock = new object();
-    private readonly string accountsPath;
-    private readonly string socialDataPath;
-    private readonly JsonSerializerOptions jsonOptions = new JsonSerializerOptions
+    private object dataLock = new object();
+    private string accountsPath;
+    private string socialDataPath;
+    private JsonSerializerOptions jsonOptions = new JsonSerializerOptions
     {
         IncludeFields = true,
         WriteIndented = true,

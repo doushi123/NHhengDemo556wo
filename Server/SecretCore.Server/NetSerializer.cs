@@ -9,11 +9,11 @@ using System.Text;
 public static class NetSerializer
 {
     // 消息类型 -> 消息 ID，发送消息时使用。
-    private static readonly ConcurrentDictionary<Type, int> messageIDCache =
+    private static ConcurrentDictionary<Type, int> messageIDCache =
         new ConcurrentDictionary<Type, int>();
 
     // 消息 ID -> 消息类型，收到消息时使用。
-    private static readonly ConcurrentDictionary<int, Type> messageTypeCache =
+    private static ConcurrentDictionary<int, Type> messageTypeCache =
         new ConcurrentDictionary<int, Type>();
 
     /// <summary>

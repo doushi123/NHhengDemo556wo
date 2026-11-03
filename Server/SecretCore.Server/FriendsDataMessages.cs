@@ -26,34 +26,6 @@ public sealed class SearchPlayerRequestMsg : BaseMsg
     public string account = string.Empty;
 }
 
-public enum OperationType
-{
-    RequestPlayerData,
-    RequestFriendsData,
-    SearchPlayer,
-    SendFriendRequest,
-    HandleFriendRequest,
-    Login,
-    Register,
-    SendPrivateChat,
-}
-
-/// <summary>
-/// 没有额外返回数据的操作结果，以及数据请求失败时的统一错误结果。
-/// </summary>
-[NetMessage(1104)]
-public sealed class OperationResultMsg : BaseMsg
-{
-    [NetField(1)]
-    public OperationType operation;
-
-    [NetField(2)]
-    public bool success;
-
-    [NetField(3)]
-    public string error = string.Empty;
-}
-
 [NetMessage(1105)]
 public sealed class SendFriendRequestMsg : BaseMsg
 {

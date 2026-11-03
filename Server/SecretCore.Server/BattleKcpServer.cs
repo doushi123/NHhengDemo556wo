@@ -1,38 +1,12 @@
 using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.Security.Cryptography;
 using kcp2k;
 
 /// <summary>
-/// 一条已经通过认证的玩家操作，供后续战斗房间按目标帧收集。
-/// </summary>
-public readonly struct BattleClientInput
-{
-    /// <summary>
-    /// 这条操作所属的战斗。
-    /// </summary>
-    public readonly long battleID;
-
-    /// <summary>
-    /// 发送这条操作的英雄席位。
-    /// </summary>
-    public readonly int seatIndex;
-
-    /// <summary>
-    /// 客户端上传的目标帧和具体操作。
-    /// </summary>
-    public readonly PlayerInputPacket packet;
-
-    public BattleClientInput(long battleID, int seatIndex, PlayerInputPacket packet)
-    {
-        this.battleID = battleID;
-        this.seatIndex = seatIndex;
-        this.packet = packet;
-    }
-}
-
-/// <summary>
 /// 独立 C# 服务端中的 KCP 战斗通道。
-/// 负责 Token 认证与输入接收。
+/// 负责 Token 认证、按逻辑帧汇总输入和广播权威操作帧。
+/// 战斗期间只推进帧号，不运行角色、碰撞或技能模拟。
 /// </summary>
 public sealed class BattleKcpServer
 {
@@ -55,24 +29,52 @@ public sealed class BattleKcpServer
         public int seatIndex;
     }
 
+    /// <summary>一局战斗的中继运行数据，保存初始数据、广播帧号、连接和待汇总输入。</summary>
+    private sealed class BattleContext
+    {
+        public BattleInitData initData;
+        /// <summary>最后已确定并广播的操作帧；开局前为 -1，首帧为 0。</summary>
+        public int frame = -1;
+        /// <summary>
+        /// 四个席位对应的KCP连接ID
+        /// </summary>
+        public int[] connections = new int[BattleConst.SeatCount];
+        /// <summary>
+        /// 每个席位上一帧采用的操作
+        /// </summary>
+        public BattleInput[] lastInputs = new BattleInput[BattleConst.SeatCount];
+        /// <summary>
+        /// 尚未广播的各帧输入
+        /// </summary>
+        public Dictionary<int, BattleInput[]> pending = new();
+        /// <summary>
+        /// 哪些席位确实上传了输入
+        /// </summary>
+        public Dictionary<int, bool[]> received = new();
+        /// <summary>
+        /// 是否开始广播操作帧
+        /// </summary>
+        public bool started;
+        /// <summary>是否由自动测试入口创建的战斗，不表示 TCP 等待房间或全局测试开关。</summary>
+        public bool isTestBattle;
+        public long nextFrameAt;
+    }
+
     
     /// <summary>
     /// 保存尚未使用的临时战斗凭证。
     /// 房间系统创建 Token 后写入，KCP 客户端认证成功时取出并删除。
     /// </summary>
-    private readonly ConcurrentDictionary<string, BattleTicket> tickets = new();
+    private ConcurrentDictionary<string, BattleTicket> tickets = new();
 
     /// <summary>
     /// 保存已通过认证的 KCP 连接及其战斗身份。
     /// 收到玩家操作时，根据 connectionID 确认它属于哪场战斗和哪个席位。
     /// </summary>
-    private readonly Dictionary<int, BattleSession> sessions = new();
+    private Dictionary<int, BattleSession> sessions = new();
 
-    /// <summary>
-    /// 已完成认证和解码的玩家操作队列。
-    /// KCP 网络线程写入，后续战斗帧调度线程从中取出操作。
-    /// </summary>
-    private readonly ConcurrentQueue<BattleClientInput> inputQueue = new();
+    /// <summary>按战斗 ID 保存各局的中继运行数据，供认证、输入汇总和帧广播查找。</summary>
+    private ConcurrentDictionary<long, BattleContext> battles = new();
 
     /// <summary>
     /// kcp2k 提供的服务端对象，负责监听连接和实际收发数据。
@@ -117,29 +119,28 @@ public sealed class BattleKcpServer
     /// 为已通过 TCP 登录且已分配战斗席位的玩家签发一次性 Token。
     /// 后续房间模块创建战斗时调用。
     /// </summary>
-    public string CreateToken(BattleInitData initData, int seatIndex)
+    /// <param name="isTestBattle">本局是否由自动测试入口创建。</param>
+    /// <param name="uploadedMapJson">仅测试战斗使用的客户端上传文本，来自正式导出地图；正式链路不传，读取服务端地图文件。</param>
+    public string CreateToken(BattleInitData initData, int seatIndex,
+        bool isTestBattle = false, string? uploadedMapJson = null)
     {
-        if (initData.seats == null|| initData.seats.Length != BattleConst.SeatCount|| seatIndex >= BattleConst.SeatCount)
+        if (initData.seats == null || initData.seats.Length != BattleConst.SeatCount ||
+            seatIndex < 0 || seatIndex >= BattleConst.SeatCount)
         {
             throw new ArgumentException("签发战斗 Token 时必须提供四个席位和有效的当前席位。");
         }
 
+        BattleContext battle = battles.GetOrAdd(initData.battleID,
+            _ => CreateBattle(initData, isTestBattle, uploadedMapJson));
+
         string token = Convert.ToHexString(RandomNumberGenerator.GetBytes(BattleConst.TokenRandomBytes));
         tickets[token] = new BattleTicket
         {
-            initData = initData,
+            initData = battle.initData,
             seatIndex = seatIndex,
             expireTime = DateTime.UtcNow.AddMinutes(1),
         };
         return token;
-    }
-
-    /// <summary>
-    /// 取得已经认证并完成解码的玩家输入。
-    /// </summary>
-    public bool TryGetInput(out BattleClientInput input)
-    {
-        return inputQueue.TryDequeue(out input);
     }
 
     /// <summary>
@@ -155,10 +156,7 @@ public sealed class BattleKcpServer
         server = null;
         sessions.Clear();
         tickets.Clear();
-
-        while (inputQueue.TryDequeue(out _))
-        {
-        }
+        battles.Clear();
     }
 
     /// <summary>
@@ -169,6 +167,14 @@ public sealed class BattleKcpServer
         while (isRunning)
         {
             server!.TickIncoming();
+            foreach (BattleContext battle in battles.Values)
+            {
+                if (battle.started && Stopwatch.GetTimestamp() >= battle.nextFrameAt)
+                {
+                    AdvanceFrame(battle);
+                    battle.nextFrameAt += Stopwatch.Frequency / BattleConst.LogicFrameRate;
+                }
+            }
             server.TickOutgoing();
             Thread.Sleep(1);
         }
@@ -221,7 +227,7 @@ public sealed class BattleKcpServer
     }
 
     /// <summary>
-    /// 给客户端上传的操作补上服务端确认的战斗和席位身份，再放入输入队列。
+    /// 用已认证的连接身份把输入放进对应战斗和目标帧。
     /// </summary>
     private void ReceiveInput(int connectionID, PlayerInputPacket packet)
     {
@@ -231,13 +237,21 @@ public sealed class BattleKcpServer
             return;
         }
 
-        if (packet.targetFrame < 0)
+        BattleContext battle = battles[session.initData.battleID];
+        if (packet.targetFrame <= battle.frame ||
+            packet.targetFrame > battle.frame + BattleConst.LogicFrameRate)
         {
-            Console.WriteLine($"KCP 连接 {connectionID} 上传了无效目标帧：{packet.targetFrame}");
+            Console.WriteLine($"KCP 连接 {connectionID} 上传了过期或过远的目标帧：{packet.targetFrame}");
             return;
         }
-
-        inputQueue.Enqueue(new BattleClientInput(session.initData.battleID, session.seatIndex, packet));
+        if (!battle.pending.TryGetValue(packet.targetFrame, out BattleInput[]? inputs))
+        {
+            inputs = new BattleInput[BattleConst.SeatCount];
+            battle.pending.Add(packet.targetFrame, inputs);
+            battle.received.Add(packet.targetFrame, new bool[BattleConst.SeatCount]);
+        }
+        inputs[session.seatIndex] = packet.input;
+        battle.received[packet.targetFrame][session.seatIndex] = true;
     }
 
     /// <summary>
@@ -261,6 +275,8 @@ public sealed class BattleKcpServer
             initData = ticket.initData,
             seatIndex = ticket.seatIndex,
         };
+        BattleContext battle = battles[ticket.initData.battleID];
+        battle.connections[ticket.seatIndex] = connectionID;
 
         Send(connectionID, BattlePacketCodec.Serialize(new BattleAuthResultPacket
         {
@@ -268,6 +284,22 @@ public sealed class BattleKcpServer
             seatIndex = ticket.seatIndex,
         }));
         Send(connectionID, BattlePacketCodec.Serialize(ticket.initData));
+
+        // 全部真人席位入场后开始计时；电脑席位不需要 KCP 连接。
+        bool allReady = true;
+        for (int seat = 0; seat < BattleConst.SeatCount; seat++)
+        {
+            if (battle.initData.seats[seat].playerID > 0 && battle.connections[seat] == 0)
+            {
+                allReady = false;
+                break;
+            }
+        }
+        if (allReady && !battle.started)
+        {
+            battle.started = true;
+            battle.nextFrameAt = Stopwatch.GetTimestamp();
+        }
 
         Console.WriteLine( $"KCP 战斗认证成功：连接 {connectionID}，战斗 {ticket.initData.battleID}，席位 {ticket.seatIndex}");
     }
@@ -277,6 +309,15 @@ public sealed class BattleKcpServer
     /// </summary>
     private void OnDisconnected(int connectionID)
     {
+        if (sessions.TryGetValue(connectionID, out BattleSession? session) &&
+            battles.TryGetValue(session.initData.battleID, out BattleContext? battle))
+        {
+            battle.connections[session.seatIndex] = 0;
+            if (battle.isTestBattle)
+            {
+                battles.TryRemove(session.initData.battleID, out _);
+            }
+        }
         sessions.Remove(connectionID);
         Console.WriteLine("KCP 客户端已断开：" + connectionID);
     }
@@ -295,6 +336,63 @@ public sealed class BattleKcpServer
     private void Send(int connectionID, byte[] bytes)
     {
         server!.Send(connectionID, new ArraySegment<byte>(bytes), KcpChannel.Reliable);
+    }
+
+    /// <summary>计算配置和地图 Hash，使用调用方提供的初始数据创建一局战斗的中继数据。</summary>
+    /// <param name="uploadedMapJson">仅测试链路提供的正式地图上传文本；正式战斗始终读取部署目录的地图文件。</param>
+    private static BattleContext CreateBattle(BattleInitData init, bool isTestBattle,
+        string? uploadedMapJson)
+    {
+        string configJson = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, BattleConst.ConfigFileName));
+        string mapJson = isTestBattle && uploadedMapJson != null
+            ? uploadedMapJson
+            : File.ReadAllText(Path.Combine(AppContext.BaseDirectory,
+                "Maps", "Map_" + init.mapID + ".json"));
+        init.configHash = BattleConfigSerializer.GetHash(configJson);
+        init.mapHash = BattleConfigSerializer.GetHash(mapJson);
+        return new BattleContext
+        {
+            initData = init,
+            isTestBattle = isTestBattle,
+        };
+    }
+
+    /// <summary>按顺序汇总并广播给所有客户端下一帧输入；缺输入时沿用移动方向并清掉一次性按钮。</summary>
+    private void AdvanceFrame(BattleContext battle)
+    {
+        int frame = battle.frame + 1;
+        BattleInput[] inputs = new BattleInput[BattleConst.SeatCount];
+        //找到之前收到的这一帧输入
+        battle.pending.TryGetValue(frame, out BattleInput[]? pending);
+        battle.received.TryGetValue(frame, out bool[]? received);
+        for (int seat = 0; seat < BattleConst.SeatCount; seat++)
+        {
+            if (battle.initData.seats[seat].playerID == 0 || battle.connections[seat] == 0)
+            {
+                battle.lastInputs[seat] = default;
+                continue;
+            }
+            inputs[seat] = received != null && received[seat] ? pending![seat] : battle.lastInputs[seat];
+            if (received == null || !received[seat])
+            {
+                inputs[seat].buttons = BattleButtons.None;
+            }
+            battle.lastInputs[seat] = inputs[seat];
+        }
+        //删除已经处理完的暂存数据
+        battle.pending.Remove(frame);
+        battle.received.Remove(frame);
+
+        AuthorityFramePacket packet = new AuthorityFramePacket { frame = frame, inputs = inputs };
+        battle.frame = frame;
+        byte[] bytes = BattlePacketCodec.Serialize(packet);
+        foreach (int connectionID in battle.connections)
+        {
+            if (connectionID != 0)
+            {
+                Send(connectionID, bytes);
+            }
+        }
     }
 
     /// <summary>

@@ -4,16 +4,18 @@ public sealed class ClientSocket
 {
     private const int MaxMessageBodySize = 1024 * 1024;
 
-    private readonly ServerSocket server;
-    private readonly Socket socket;
-    private readonly object sendLock = new object();
-    private readonly byte[] receiveBytes = new byte[8192];
-    private readonly byte[] cacheBytes = new byte[MaxMessageBodySize + 8];
+    private ServerSocket server;
+    private Socket socket;
+    private object sendLock = new object();
+    private byte[] receiveBytes = new byte[8192];
+    private byte[] cacheBytes = new byte[MaxMessageBodySize + 8];
 
     private int cacheNum;
-    private volatile bool isConnected = true;
+    // 接收线程和房间发送线程都可能关闭连接，用原子标记保证 Socket 只关闭一次。
+    private int isClosed;
     private PlayerProfileData? currentPlayer;
 
+    private bool IsConnected => Volatile.Read(ref isClosed) == 0;
     public bool IsLoggedIn => currentPlayer != null;
     public int PlayerID => currentPlayer?.playerID ?? 0;
 
@@ -45,12 +47,10 @@ public sealed class ClientSocket
 
     public void Close()
     {
-        if (!isConnected)
+        if (Interlocked.Exchange(ref isClosed, 1) != 0)
         {
             return;
         }
-
-        isConnected = false;
 
         try
         {
@@ -67,7 +67,7 @@ public sealed class ClientSocket
     {
         try
         {
-            while (isConnected)
+            while (IsConnected)
             {
                 int receiveNum = socket.Receive(receiveBytes);
                 if (receiveNum == 0)
@@ -80,7 +80,7 @@ public sealed class ClientSocket
         }
         catch (Exception exception)
         {
-            if (isConnected)
+            if (IsConnected)
             {
                 Console.WriteLine("客户端通信出错：" + exception.Message);
             }
@@ -150,6 +150,19 @@ public sealed class ClientSocket
             return;
         }
 
+        if (msg is BattleTestRequestMsg battleTestRequest)
+        {
+            HandleBattleTestRequest(battleTestRequest);
+            return;
+        }
+
+        if (msg is CreateRoomRequestMsg || msg is JoinRoomRequestMsg
+            || msg is LeaveRoomRequestMsg || msg is StartBattleRequestMsg)
+        {
+            server.Rooms.Handle(this, currentPlayer, msg);
+            return;
+        }
+
         if (msg is RequestPlayerDataMsg playerRequest)
         {
             SendPlayerData(playerRequest);
@@ -192,8 +205,35 @@ public sealed class ClientSocket
         }
     }
 
+    /// <summary>
+    /// 创建测试战斗并返回 Token；不要求客户端先登录账号。
+    /// </summary>
+    private void HandleBattleTestRequest(BattleTestRequestMsg request)
+    {
+        bool testModeEnabled = BattleTestMode.Enabled;
+        if (testModeEnabled)
+        {
+            bool success = server.TryCreateBattleTestToken(request, out string token, out string error);
+            Send(new BattleTestTokenMsg
+            {
+                battleToken = success ? token : string.Empty,
+                error = error,
+            });
+            return;
+        }
+
+        Send(new BattleTestTokenMsg { error = "服务端测试模式未开启。" });
+    }
+
     private void HandleLogin(LoginRequestMsg request)
     {
+        // 入房身份绑定这条连接，登录后不能在同一连接上换号留下旧席位。
+        if (IsLoggedIn)
+        {
+            SendOperationResult(OperationType.Login, false, "当前连接已经登录，请断开连接后再切换账号。");
+            return;
+        }
+
         bool success = server.TryLogin(
             request.account,
             request.password,
@@ -216,6 +256,12 @@ public sealed class ClientSocket
 
     private void HandleRegister(RegisterRequestMsg request)
     {
+        if (IsLoggedIn)
+        {
+            SendOperationResult(OperationType.Register, false, "当前连接已经登录，请断开连接后再注册其他账号。");
+            return;
+        }
+
         bool success = server.TryRegister(
             request.account,
             request.password,

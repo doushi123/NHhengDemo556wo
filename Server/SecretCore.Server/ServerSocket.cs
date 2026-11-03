@@ -3,22 +3,68 @@ using System.Net.Sockets;
 
 public sealed class ServerSocket
 {
-    private readonly object clientLock = new object();
-    private readonly List<ClientSocket> clients = new List<ClientSocket>();
-    private readonly AccountDataStore dataStore;
-    private readonly WorldChatStore worldChatStore;
-    private readonly PrivateChatStore privateChatStore;
+    /// <summary>所有 TCP 连接共用的房间管理器，统一维护成员关系和房间通知顺序。</summary>
+    public RoomManager Rooms { get; } = new RoomManager();
+
+    private object clientLock = new object();
+    private List<ClientSocket> clients = new List<ClientSocket>();
+    private AccountDataStore dataStore;
+    private WorldChatStore worldChatStore;
+    private PrivateChatStore privateChatStore;
+    private BattleKcpServer battleServer;
 
     private Socket? socket;
     private volatile bool isRunning;
     private long nextWorldChatMessageID;
     private long nextPrivateChatMessageID;
+    private long nextBattleTestID = DateTime.UtcNow.Ticks;
 
-    public ServerSocket(string dataDirectory)
+    public ServerSocket(string dataDirectory, BattleKcpServer battleServer)
     {
+        this.battleServer = battleServer;
         dataStore = new AccountDataStore(dataDirectory);
         worldChatStore = new WorldChatStore(dataDirectory);
         privateChatStore = new PrivateChatStore(dataDirectory);
+    }
+
+    /// <summary>
+    /// 创建测试战斗 Token。只由 BattleTestRequestMsg 调用，不参与正式登录流程。
+    /// </summary>
+    public bool TryCreateBattleTestToken(BattleTestRequestMsg request, out string token, out string error)
+    {
+        try
+        {
+            BattleInitData initData = new BattleInitData
+            {
+                battleID = Interlocked.Increment(ref nextBattleTestID),
+                mapID = request.mapID,
+                randomSeed = 1,
+                mode = BattleMode.CoreWar,
+                seats = new BattleSeatData[BattleConst.SeatCount],
+            };
+
+            for (int seat = 0; seat < BattleConst.SeatCount; seat++)
+            {
+                initData.seats[seat] = new BattleSeatData
+                {
+                    playerID = seat == 0 ? 1 : 0,
+                    camp = seat < 2 ? BattleCamp.CampA : BattleCamp.CampB,
+                    spawnX = request.spawnX,
+                    spawnZ = request.spawnZ,
+                    spawnY = request.spawnY,
+                };
+            }
+
+            token = battleServer.CreateToken(initData, 0, true, request.mapJson);
+            error = string.Empty;
+            return true;
+        }
+        catch (Exception exception)
+        {
+            token = string.Empty;
+            error = exception.Message;
+            return false;
+        }
     }
 
     public void Start(int port)
@@ -226,6 +272,7 @@ public sealed class ServerSocket
         }
 
         client.Close();
+        Rooms.Disconnect(client);
     }
 
     public void Close()
@@ -243,6 +290,8 @@ public sealed class ServerSocket
 
             clients.Clear();
         }
+
+        Rooms.Clear();
 
         // 所有连接停止后，等待世界聊天保存队列中的任务全部写完再退出服务端。
         worldChatStore.Close();
