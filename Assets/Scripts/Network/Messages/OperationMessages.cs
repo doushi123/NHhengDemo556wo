@@ -1,5 +1,6 @@
 /// <summary>
-/// 标明统一结果消息回复的是哪一种请求，不负责执行对应操作。
+/// 操作类型，例如登录、发送好友申请、创建房间。
+/// 服务端返回结果时带上它，让客户端知道是哪项操作成功或失败。
 /// </summary>
 public enum OperationType
 {
@@ -38,6 +39,9 @@ public enum OperationType
 
     /// <summary>房主请求开始战斗。</summary>
     StartBattle,
+
+    /// <summary>切换到房间中的空席位。</summary>
+    ChangeSeat,
 }
 
 /// <summary>

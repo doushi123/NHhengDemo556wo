@@ -313,7 +313,8 @@ public sealed class NetManager : AppService
             if (operationResult.operation == OperationType.CreateRoom
                 || operationResult.operation == OperationType.JoinRoom
                 || operationResult.operation == OperationType.LeaveRoom
-                || operationResult.operation == OperationType.StartBattle)
+                || operationResult.operation == OperationType.StartBattle
+                || operationResult.operation == OperationType.ChangeSeat)
             {
                 RoomManager.Instance.Receive(operationResult);
                 return;

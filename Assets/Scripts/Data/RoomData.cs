@@ -40,8 +40,8 @@ public sealed class RoomData
 
     /// <summary>
     /// 数组下标就是席位编号，固定四项；0/1 属于阵营 A，2/3 属于阵营 B。
-    /// 有人时复用其公开资料，null 表示空位；房间阶段不创建 playerID 为 0 的假玩家。
-    /// 开战时才把空位转换为 BattleSeatData 中的电脑席位。
+    /// 有人时复用其公开资料，null 表示空位。
+    /// 开战时把空位转换为 BattleSeatData 中的电脑席位。
     /// </summary>
     [NetField(6)]
     public PlayerProfileData[] seats = new PlayerProfileData[BattleConst.SeatCount];

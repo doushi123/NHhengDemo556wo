@@ -13,7 +13,7 @@ public class LobbyPanel : BasePanel
     [SerializeField] private GameObject chatBg;
     [SerializeField] private Button chatBtn;
     [SerializeField] private Button chatWorldCloseBtn;
-    [SerializeField] private Button[] modeBtns;
+    [SerializeField] private Button coreWarBtn;
 
     [Header("世界聊天")]
     [SerializeField] private TMP_InputField chatInput;
@@ -30,10 +30,7 @@ public class LobbyPanel : BasePanel
     {
         chatBg.SetActive(false);
         FriendSideBg.SetActive(false);
-        exitBtn.onClick.AddListener(() =>
-        {
-            Application.Quit();
-        });
+        exitBtn.onClick.AddListener(OpenExitOptions);
         friendBtn.onClick.AddListener(() =>
         {
             FriendSideBg.SetActive(true);
@@ -52,10 +49,27 @@ public class LobbyPanel : BasePanel
         {
            chatBg.SetActive(false); 
         });
-        foreach(var modeBtn in modeBtns)
+        coreWarBtn.onClick.AddListener(() => OpenRoomOptions(BattleMode.CoreWar));
+    }
+
+    /// <summary>点击玩法卡片后，打开创建或加入房间的选项框。</summary>
+    private void OpenRoomOptions(BattleMode mode)
+    {
+        if (RoomManager.Instance.CurrentRoom != null)
         {
-            
+            UIManager.Instance.Open(PanelId.Room);
+            return;
         }
+
+        OptionPanel panel = (OptionPanel)UIManager.Instance.Open(PanelId.Option);
+        panel.OpenRoomOptions(mode);
+    }
+
+    /// <summary>复用选项弹窗确认退出，取消或关闭弹窗时继续留在大厅。</summary>
+    private void OpenExitOptions()
+    {
+        OptionPanel panel = (OptionPanel)UIManager.Instance.Open(PanelId.Option);
+        panel.OpenQuitOptions();
     }
 
     public override void Open(object data = null)

@@ -71,3 +71,12 @@ public sealed class BattleEntryMsg : BaseMsg
     [NetField(2)]
     public string battleToken = string.Empty;
 }
+
+/// <summary>请求移动到房间中的指定空席位；玩家身份和当前房间由服务端连接确定。</summary>
+[NetMessage(1608)]
+public class ChangeSeatRequestMsg : BaseMsg
+{
+    /// <summary>想要移动到的席位编号，范围为 0～3。</summary>
+    [NetField(1)]
+    public int seatIndex;
+}
