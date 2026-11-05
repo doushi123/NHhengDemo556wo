@@ -22,6 +22,29 @@
       "source": "embedded",
       "dependencies": {}
     },
+    "com.secretcore.bepuphysics": {
+      "version": "file:BEPUphysics",
+      "depth": 0,
+      "source": "embedded",
+      "dependencies": {
+        "com.secretcore.fixmath": "1.0.0",
+        "com.secretcore.beputilities": "1.0.0"
+      }
+    },
+    "com.secretcore.beputilities": {
+      "version": "file:BEPUutilities",
+      "depth": 0,
+      "source": "embedded",
+      "dependencies": {
+        "com.secretcore.fixmath": "1.0.0"
+      }
+    },
+    "com.secretcore.fixmath": {
+      "version": "file:FixedMath.Net",
+      "depth": 0,
+      "source": "embedded",
+      "dependencies": {}
+    },
     "com.secretcore.kcp2k": {
       "version": "file:com.secretcore.kcp2k",
       "depth": 0,

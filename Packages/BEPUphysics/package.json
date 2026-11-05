@@ -1,0 +1,12 @@
+{
+  "name": "com.secretcore.bepuphysics",
+  "version": "1.0.0",
+  "displayName": "BEPUphysicsint",
+  "description": "Local pure C# fixed-point 3D physics source from sam-vdp/bepuphysics1int, including its character controller.",
+  "unity": "2022.3",
+  "license": "Apache-2.0",
+  "dependencies": {
+    "com.secretcore.fixmath": "1.0.0",
+    "com.secretcore.beputilities": "1.0.0"
+  }
+}

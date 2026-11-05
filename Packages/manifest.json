@@ -1,5 +1,8 @@
 {
   "dependencies": {
+    "com.secretcore.bepuphysics": "file:BEPUphysics",
+    "com.secretcore.beputilities": "file:BEPUutilities",
+    "com.secretcore.fixmath": "file:FixedMath.Net",
     "com.coplaydev.unity-mcp": "file:com.coplaydev.unity-mcp",
     "com.mrdav30.fixedmathsharp.lean": "file:com.mrdav30.fixedmathsharp.lean",
     "com.secretcore.kcp2k": "file:com.secretcore.kcp2k",

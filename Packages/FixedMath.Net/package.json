@@ -1,0 +1,9 @@
+{
+  "name": "com.secretcore.fixmath",
+  "version": "1.0.0",
+  "displayName": "FixMath.NET for BEPU",
+  "description": "Local FixMath.NET source bundled with BEPUphysicsint. Shared by Unity and the standalone server.",
+  "unity": "2022.3",
+  "license": "Apache-2.0",
+  "dependencies": {}
+}

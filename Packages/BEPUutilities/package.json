@@ -1,0 +1,11 @@
+{
+  "name": "com.secretcore.beputilities",
+  "version": "1.0.0",
+  "displayName": "BEPUphysicsint Utilities",
+  "description": "Pure C# fixed-point math and utility source required by BEPUphysicsint.",
+  "unity": "2022.3",
+  "license": "Apache-2.0",
+  "dependencies": {
+    "com.secretcore.fixmath": "1.0.0"
+  }
+}

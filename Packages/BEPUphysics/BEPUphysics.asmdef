@@ -1,0 +1,17 @@
+{
+  "name": "BEPUphysics",
+  "rootNamespace": "",
+  "references": [
+    "FixMath.NET",
+    "BEPUutilities"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": true
+}
