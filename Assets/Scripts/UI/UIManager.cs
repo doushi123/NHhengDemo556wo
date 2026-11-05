@@ -14,7 +14,6 @@ public sealed class UIManager : AppService
     protected override void OnInitialize()
     {
         Instance = this;
-
         foreach (BasePanel prefab in panelPrefabs)
         {
             prefabs.Add(prefab.Id, prefab);
