@@ -1091,7 +1091,7 @@ MonoBehaviour:
   chatBg: {fileID: 5983479624582101426}
   chatBtn: {fileID: 1716337713244506899}
   chatWorldCloseBtn: {fileID: 5377875313430324400}
-  modeBtns: []
+  coreWarBtn: {fileID: 0}
   chatInput: {fileID: 1316379489258758037}
   sendBtn: {fileID: 3916775253859008084}
   worldChatScrollRect: {fileID: 3545313491716196178}
@@ -1667,7 +1667,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &591284480653074171
 RectTransform:
   m_ObjectHideFlags: 0
@@ -2194,7 +2194,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &6748611356686197733
 RectTransform:
   m_ObjectHideFlags: 0
