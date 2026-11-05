@@ -63,6 +63,10 @@ public sealed class RoomLeftMsg : BaseMsg
 [NetMessage(1607)]
 public sealed class BattleEntryMsg : BaseMsg
 {
+    /// <summary>本次入场的战斗 ID，用于识别就绪、失败和取消属于哪一局。</summary>
+    [NetField(3)]
+    public long battleID;
+
     /// <summary>需要加载的正式地图 ID，客户端据此选择战斗场景。</summary>
     [NetField(1)]
     public int mapID;
@@ -79,4 +83,28 @@ public class ChangeSeatRequestMsg : BaseMsg
     /// <summary>想要移动到的席位编号，范围为 0～3。</summary>
     [NetField(1)]
     public int seatIndex;
+}
+
+/// <summary>客户端无法完成场景或战斗初始化时，通知服务端取消本次入场。</summary>
+[NetMessage(1609)]
+public class BattleLoadFailedMsg : BaseMsg
+{
+    [NetField(1)]
+    public long battleID;
+
+    /// <summary>加载失败的具体原因。</summary>
+    [NetField(2)]
+    public string error = string.Empty;
+}
+
+/// <summary>本次开战因加载失败、超时或成员离开而取消，客户端关闭加载界面。</summary>
+[NetMessage(1610)]
+public class BattleCancelledMsg : BaseMsg
+{
+    [NetField(1)]
+    public long battleID;
+
+    /// <summary>供房间成员查看的取消原因。</summary>
+    [NetField(2)]
+    public string error = string.Empty;
 }

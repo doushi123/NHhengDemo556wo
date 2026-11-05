@@ -69,9 +69,17 @@ public static class MapBaker
             }
         }
 
+        Vector3[] positions = authoring.GetSpawns();
+        MapVector[] spawns = new MapVector[positions.Length];
+        for (int i = 0; i < positions.Length; i++)
+        {
+            spawns[i] = ToVector(positions[i]);
+        }
+
         return new MapData
         {
             mapID = authoring.MapID,
+            spawns = spawns,
             boundsMin = ToVector(bounds.min),
             boundsMax = ToVector(bounds.max),
             boxes = boxes.ToArray(),

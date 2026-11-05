@@ -16,6 +16,9 @@ public sealed class MapData
     public MapVector boundsMin;
     public MapVector boundsMax;
 
+    /// <summary>手动摆放的四个脚底出生位置，按席位 0～3 排列。</summary>
+    public MapVector[] spawns = Array.Empty<MapVector>();
+
     /// <summary>有旋转和尺寸的静态盒体。</summary>
     public MapBox[] boxes = Array.Empty<MapBox>();
 

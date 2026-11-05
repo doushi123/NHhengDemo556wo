@@ -64,6 +64,12 @@ public enum BattlePacketType
 
     /// <summary>服务端确认并广播给所有客户端的一帧操作。</summary>
     AuthorityFrame = 5,
+
+    /// <summary>客户端确认已加载好。</summary>
+    Ready = 6,
+
+    /// <summary>所有客户端已加载完毕，服务端通知各客户端开始战斗。</summary>
+    Start = 7,
 }
 
 /// <summary>
@@ -292,4 +298,18 @@ public struct AuthorityFramePacket
     /// <summary>四个席位在这一帧最终执行的输入，数组下标就是席位编号。</summary>
     [NetField(2)]
     public BattleInput[] inputs;
+}
+
+/// <summary>通过已认证 KCP 连接上报就绪，身份与战斗由服务端 Session 确定。</summary>
+[BattlePacket(BattlePacketType.Ready)]
+public struct BattleReadyPacket
+{
+}
+
+/// <summary>服务端统一开始战斗的通知，先于本局首个操作帧发送。</summary>
+[BattlePacket(BattlePacketType.Start)]
+public struct BattleStartPacket
+{
+    [NetField(1)]
+    public long battleID;
 }

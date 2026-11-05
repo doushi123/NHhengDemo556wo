@@ -6,7 +6,6 @@ using UnityEngine;
 public sealed class MapAuthoring : MonoBehaviour
 {
     [Min(1)] [SerializeField] private int mapID = 1;
-    [Tooltip("选择地面和静态障碍所在层，例如 BattleGround 与 BattleBlocker。无需调整地图父子层级。")]
     [SerializeField] private LayerMask collisionLayers;
     [SerializeField] private Vector3 boundsSize = new Vector3(40f, 10f, 40f);
 
@@ -26,6 +25,12 @@ public sealed class MapAuthoring : MonoBehaviour
     public int MapID => mapID;
     public LayerMask CollisionLayers => collisionLayers;
     public Bounds MapBounds => new Bounds(transform.position, boundsSize);
+
+    /// <summary>取得四个手动出生点，烘焙时按席位顺序导出，不自动调整位置。</summary>
+    public Vector3[] GetSpawns()
+    {
+        return new[] { spawn0.position, spawn1.position, spawn2.position, spawn3.position };
+    }
 
     /// <summary>
     /// 选中地图范围对象时显示导出区域。

@@ -47,6 +47,12 @@ public sealed class PlayerController : MonoBehaviour
 
     private void Update()
     {
+        if (!BattleNetManager.Instance.IsRunning)
+        {
+            BattleNetManager.Instance.SetInput(default);
+            ShowSimulation();
+            return;
+        }
         Vector2 input = new Vector2(Input.GetAxisRaw("Horizontal"),Input.GetAxisRaw("Vertical"));
         Vector3 direction = IsDead ? Vector3.zero : GetMoveDirection(input).normalized;
         BattleInput currentInput = new BattleInput
@@ -56,6 +62,16 @@ public sealed class PlayerController : MonoBehaviour
             isRunning = !IsDead && IsRunKeyHeld(),
         };
         BattleNetManager.Instance.SetInput(currentInput);
+        ShowSimulation();
+    }
+
+    /// <summary>正式上报就绪前检查场景引用，并把本地角色显示到服务端指定的出生位置。</summary>
+    public void PrepareBattle()
+    {
+        if (movementCamera == null || animator == null || heroConfig == null)
+        {
+            throw new System.InvalidOperationException("PlayerController 缺少摄像机、Animator 或英雄配置引用。");
+        }
         ShowSimulation();
     }
 

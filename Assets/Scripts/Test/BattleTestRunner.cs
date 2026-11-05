@@ -18,7 +18,8 @@ public sealed class BattleTestRunner : MonoBehaviour
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     private static void CreateRunner()
     {
-        if (!BattleTestMode.Enabled || instance != null)
+        if (!BattleTestMode.Enabled || instance != null ||
+            UnityEngine.SceneManagement.SceneManager.GetActiveScene().name == "BootStrap")
         {
             return;
         }

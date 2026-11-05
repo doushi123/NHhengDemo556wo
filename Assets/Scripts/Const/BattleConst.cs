@@ -35,4 +35,7 @@ public static class BattleConst
     /// </summary>
     public const int TokenRandomBytes = 16;
 
+    /// <summary>等待所有真人完成入场的最长秒数，超时取消本次开战。</summary>
+    public const int LoadTimeoutSeconds = 120;
+
 }
