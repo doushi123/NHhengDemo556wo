@@ -53,11 +53,11 @@ public class OptionPanel : BasePanel
         RoomManager.Instance.CreateRoom(roomMode);
     }
 
-    /// <summary>关闭当前选项框，打开房间号输入面板。</summary>
+    /// <summary>关闭当前选项框，显示大厅内的房间号输入区域。</summary>
     private void OpenJoinRoom()
     {
         Close();
-        UIManager.Instance.Open(PanelId.JoinRoom);
+        UIManager.Instance.GetOpenPanel<LobbyPanel>(PanelId.Lobby).OpenJoinRoom();
     }
 
     /// <summary>关闭选项框并退出应用。</summary>

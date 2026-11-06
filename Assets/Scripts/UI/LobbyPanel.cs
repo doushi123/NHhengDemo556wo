@@ -13,7 +13,14 @@ public class LobbyPanel : BasePanel
     [SerializeField] private GameObject chatBg;
     [SerializeField] private Button chatBtn;
     [SerializeField] private Button chatWorldCloseBtn;
-    [SerializeField] private Button coreWarBtn;
+    // 按大厅卡片顺序绑定：第一个进入核心玩法，其余只提示“敬请期待”。
+    [SerializeField] private Button[] modeBtns;
+
+    [Header("加入房间")]
+    [SerializeField] private GameObject joinRoomBg;
+    [SerializeField] private TMP_InputField roomInput;
+    [SerializeField] private Button joinRoomBtn;
+    [SerializeField] private Button joinRoomCloseBtn;
 
     [Header("世界聊天")]
     [SerializeField] private TMP_InputField chatInput;
@@ -28,6 +35,9 @@ public class LobbyPanel : BasePanel
 
     private void Start()
     {
+        roomInput.contentType = TMP_InputField.ContentType.IntegerNumber;
+        joinRoomBtn.onClick.AddListener(JoinRoom);
+        joinRoomCloseBtn.onClick.AddListener(CloseJoinRoom);
         chatBg.SetActive(false);
         FriendSideBg.SetActive(false);
         exitBtn.onClick.AddListener(OpenExitOptions);
@@ -49,7 +59,11 @@ public class LobbyPanel : BasePanel
         {
            chatBg.SetActive(false); 
         });
-        coreWarBtn.onClick.AddListener(() => OpenRoomOptions(BattleMode.CoreWar));
+        modeBtns[0].onClick.AddListener(() => OpenRoomOptions(BattleMode.CoreWar));
+        for (int i = 1; i < modeBtns.Length; i++)
+        {
+            modeBtns[i].onClick.AddListener(() => UIManager.Instance.Open(PanelId.Tip, "敬请期待"));
+        }
     }
 
     /// <summary>点击玩法卡片后，打开创建或加入房间的选项框。</summary>
@@ -75,7 +89,41 @@ public class LobbyPanel : BasePanel
     public override void Open(object data = null)
     {
         base.Open(data);
+        CloseJoinRoom();
         RefreshWorldChat();
+    }
+
+    /// <summary>关闭大厅时一并隐藏房间号输入区域。</summary>
+    public override void Close()
+    {
+        CloseJoinRoom();
+        base.Close();
+    }
+
+    /// <summary>显示大厅内的房间号输入区域，清空旧内容并让输入框获得焦点。</summary>
+    public void OpenJoinRoom()
+    {
+        joinRoomBg.SetActive(true);
+        roomInput.text = string.Empty;
+        roomInput.ActivateInputField();
+    }
+
+    /// <summary>取消输入或成功入房后，隐藏房间号输入区域。</summary>
+    public void CloseJoinRoom()
+    {
+        joinRoomBg.SetActive(false);
+    }
+
+    /// <summary>检查房间号并请求加入；输入错误或服务端拒绝时保留输入区域。</summary>
+    private void JoinRoom()
+    {
+        if (!int.TryParse(roomInput.text.Trim(), out int roomID) || roomID <= 0)
+        {
+            UIManager.Instance.Open(PanelId.Tip, "请输入有效的房间号。");
+            return;
+        }
+
+        RoomManager.Instance.JoinRoom(roomID);
     }
 
     private void OnClickSendWorldChat()
