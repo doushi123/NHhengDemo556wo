@@ -10,5 +10,9 @@ public sealed class SkillConfigSO : ScriptableObject
     [Header("Battle Data")]
     [SerializeField] private SkillConfigData data = new SkillConfigData();
 
+    [Tooltip("导出时读取 HitStart、HitEnd 和片段结尾，自动生成前摇、判定和后摇时间。")]
+    [SerializeField] private AnimationClip animationClip;
+
     public SkillConfigData Data => data;
+    public AnimationClip AnimationClip => animationClip;
 }

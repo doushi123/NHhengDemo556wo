@@ -13,7 +13,6 @@ public class LobbyPanel : BasePanel
     [SerializeField] private GameObject chatBg;
     [SerializeField] private Button chatBtn;
     [SerializeField] private Button chatWorldCloseBtn;
-    // 按大厅卡片顺序绑定：第一个进入核心玩法，其余只提示“敬请期待”。
     [SerializeField] private Button[] modeBtns;
 
     [Header("加入房间")]

@@ -89,13 +89,13 @@ public sealed class RoomManager : AppService
     {
         CurrentRoom = msg.data;
         entering = false;
-        UIManager.Instance.Close(PanelId.JoinRoom);
         if (CurrentRoom.state == RoomState.Waiting)
         {
             if (!UIManager.Instance.IsOpen(PanelId.Lobby))
             {
                 UIManager.Instance.Open(PanelId.Lobby);
             }
+            UIManager.Instance.GetOpenPanel<LobbyPanel>(PanelId.Lobby).CloseJoinRoom();
             UIManager.Instance.Open(PanelId.Room);
         }
         else
@@ -237,7 +237,7 @@ public sealed class RoomManager : AppService
         BattleNetManager.Instance.Close();
         // 退出确认或断线时关闭房间界面；大厅一直保留在下层。
         UIManager.Instance.Close(PanelId.Room);
-        UIManager.Instance.Close(PanelId.JoinRoom);
+        UIManager.Instance.GetOpenPanel<LobbyPanel>(PanelId.Lobby)?.CloseJoinRoom();
         CurrentRoom = null;
         entering = false;
     }
