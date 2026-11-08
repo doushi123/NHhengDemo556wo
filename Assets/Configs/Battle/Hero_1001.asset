@@ -18,8 +18,12 @@ MonoBehaviour:
     moveSpeed: 4.5
     runSpeed: 6.75
     collisionRadius: 0.45
-    skill1ID: 0
+    skill1ID: 3001
     skill2ID: 0
+    bot:
+      decisionIntervalFrames: 3
+      coreDefenseRange: 12
+      monsterNoticeRange: 8
   prefab: {fileID: 0}
   animator: {fileID: 0}
   icon: {fileID: 0}

@@ -15,12 +15,15 @@ MonoBehaviour:
   data:
     skillID: 2001
     skillType: 1
+    effect: 0
     startupSeconds: 0.25
     activeSeconds: 0.05
     recoverySeconds: 0.25
     cooldownSeconds: 0.8
     damage: 100
-    range: 1.8
-    angle: 90
+    range: 2.5
+    angle: 150
     moveDistance: 0
-  invincibleSeconds: 0
+    projectileSpeed: 12
+    projectileRadius: 0.5
+  animationClip: {fileID: 1827226128182048838, guid: cf9ae7ed56752f640aa1e0b97b72c098, type: 3}

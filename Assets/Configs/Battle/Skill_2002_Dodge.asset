@@ -18,7 +18,7 @@ MonoBehaviour:
     startupSeconds: 0
     activeSeconds: 0.3
     recoverySeconds: 0
-    cooldownSeconds: 2
+    cooldownSeconds: 0
     damage: 0
     range: 0
     angle: 0

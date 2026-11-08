@@ -1,0 +1,29 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f15f2139d9374417b630728313fc0e93, type: 3}
+  m_Name: Skill__3001_Skill1
+  m_EditorClassIdentifier: 
+  data:
+    skillID: 3001
+    skillType: 1
+    effect: 1
+    startupSeconds: 0
+    activeSeconds: 0.3
+    recoverySeconds: 0
+    cooldownSeconds: 4
+    damage: 150
+    range: 6
+    angle: 0
+    moveDistance: 3
+    projectileSpeed: 12
+    projectileRadius: 0.5
+  animationClip: {fileID: 1827226128182048838, guid: 948cdc3ab4242f24d96a8ce50c46002f, type: 3}
