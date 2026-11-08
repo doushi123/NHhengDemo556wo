@@ -6,12 +6,17 @@ using UnityEngine.UI;
 public class BattlePanel : BasePanel
 {
     [SerializeField] private HealthBar healthBar;
-    [Tooltip("死亡时显示复活倒计时，复活保护期间显示保护提示。")]
     [SerializeField] private TMP_Text respawnText;
-    [Tooltip("技能一图标上的冷却数字，可与冷却遮罩独立使用。")]
     [SerializeField] private TMP_Text skill1CooldownText;
-    [Tooltip("Filled 类型的技能冷却遮罩，冷却结束时填充为 0。")]
     [SerializeField] private Image skill1CooldownMask;
+    [SerializeField] private TMP_Text ownEnergyText;
+    [SerializeField] private Image ownEnergyFill;
+    [SerializeField] private TMP_Text ownRageText;
+    [SerializeField] private Image ownRageFill;
+    [SerializeField] private TMP_Text enemyEnergyText;
+    [SerializeField] private Image enemyEnergyFill;
+    [SerializeField] private TMP_Text enemyRageText;
+    [SerializeField] private Image enemyRageFill;
 
     private BattleSimulation simulation;
     private int seatIndex;
@@ -34,19 +39,31 @@ public class BattlePanel : BasePanel
     {
         PlayerBattleState state = simulation.GetPlayerState(seatIndex);
         healthBar.Refresh(state.hp, state.maxHp);
+        CoreWarCampState ownCamp = simulation.GetCampState(state.camp);
+        BattleCamp enemyCampID = state.camp == BattleCamp.CampA ? BattleCamp.CampB : BattleCamp.CampA;
+        CoreWarCampState enemyCamp = simulation.GetCampState(enemyCampID);
+        CoreBaseState ownCore = simulation.GetCoreState(state.camp);
+        CoreBaseState enemyCore = simulation.GetCoreState(enemyCampID);
+        float ownEnergyPercent = Mathf.Clamp01((float)ownCore.hp / ownCore.maxHp);
+        ownEnergyText.SetText("{0}%", Mathf.RoundToInt(ownEnergyPercent * 100f));
+        ownEnergyFill.fillAmount = ownEnergyPercent;
+        float ownRagePercent = Mathf.Clamp01((float)ownCamp.coreRage / BattleConst.StartingCoreRage);
+        ownRageText.SetText("{0}%", Mathf.RoundToInt(ownRagePercent * 100f));
+        ownRageFill.fillAmount = ownRagePercent;
+        float enemyEnergyPercent = Mathf.Clamp01((float)enemyCore.hp / enemyCore.maxHp);
+        enemyEnergyText.SetText("{0}%", Mathf.RoundToInt(enemyEnergyPercent * 100f));
+        enemyEnergyFill.fillAmount = enemyEnergyPercent;
+        float enemyRagePercent = Mathf.Clamp01((float)enemyCamp.coreRage / BattleConst.StartingCoreRage);
+        enemyRageText.SetText("{0}%", Mathf.RoundToInt(enemyRagePercent * 100f));
+        enemyRageFill.fillAmount = enemyRagePercent;
         if (respawnText != null)
         {
-            bool protectedPlayer = simulation.IsProtected(seatIndex);
-            respawnText.gameObject.SetActive(state.IsDead || protectedPlayer);
+            respawnText.gameObject.SetActive(state.IsDead);
             if (state.IsDead)
             {
                 int seconds = (simulation.GetRespawnRemainingFrames(seatIndex) + BattleConst.LogicFrameRate - 1) /
                     BattleConst.LogicFrameRate;
                 respawnText.SetText("{0} 秒后重返战场", seconds);
-            }
-            else if (protectedPlayer)
-            {
-                respawnText.text = "复活保护 · 攻击后结束";
             }
         }
         SkillConfigData skill = simulation.Skill1Config;

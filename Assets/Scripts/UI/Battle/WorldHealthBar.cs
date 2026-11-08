@@ -11,6 +11,12 @@ public class WorldHealthBar : MonoBehaviour
     private int displayedHp = -1;
     private int displayedMaxHp = -1;
 
+    /// <summary>给运行时生成的头顶血条指定朝向摄像机。</summary>
+    public void SetCamera(Camera camera)
+    {
+        viewCamera = camera;
+    }
+
     /// <summary>只在血量变化时刷新填充比例。</summary>
     public void Refresh(int hp, int maxHp)
     {
