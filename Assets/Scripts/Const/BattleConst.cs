@@ -38,4 +38,23 @@ public static class BattleConst
     /// <summary>等待所有真人完成入场的最长秒数，超时取消本次开战。</summary>
     public const int LoadTimeoutSeconds = 120;
 
+    /// <summary>英雄死亡后，等待多久在本席位的手动出生点复活。</summary>
+    public const float RespawnSeconds = 5f;
+
+    /// <summary>每个阵营开局时的秘核狂暴。</summary>
+    public const int StartingCoreRage = 100;
+    /// <summary>本阵营击杀一名敌方英雄时恢复的基地生命（秘核能量）。</summary>
+    public const int KillCoreEnergy = 10;
+    /// <summary>本阵营英雄死亡时扣除的基地生命（秘核能量）。</summary>
+    public const int DeathCoreEnergy = 5;
+    /// <summary>本阵营击杀一名敌方英雄时增加的秘核狂暴。</summary>
+    public const int KillCoreRage = 20;
+    /// <summary>本阵营英雄死亡时减少的秘核狂暴。</summary>
+    public const int DeathCoreRage = 10;
+    /// <summary>每经过一秒自然减少的秘核狂暴。</summary>
+    public const int CoreRageDecayPerSecond = 1;
+
+    /// <summary>基地每累计损失最大生命的 1%，所属阵营增加的秘核狂暴。</summary>
+    public const int CoreDamageRageGainPerPercent = 1;
+
 }

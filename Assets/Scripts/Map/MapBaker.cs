@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using FixMath.NET;
 using UnityEngine;
@@ -12,23 +12,8 @@ public static class MapBaker
     public static MapData Build(MapAuthoring authoring)
     {
         Bounds bounds = authoring.MapBounds;
-        if (authoring.MapID <= 0 ||
-            bounds.size.x <= 0f || bounds.size.y <= 0f || bounds.size.z <= 0f)
-        {
-            throw new InvalidOperationException("地图 ID 和边界尺寸必须大于 0。");
-        }
-        if (authoring.CollisionLayers.value == 0)
-        {
-            throw new InvalidOperationException("请在 Collision Layers 中选择地面和障碍物所在层。");
-        }
-
         Physics.SyncTransforms();
         List<Collider> colliders = CollectColliders(authoring, bounds);
-        if (colliders.Count == 0)
-        {
-            throw new InvalidOperationException("所选层和边界内没有可导出的静态 Collider，请检查层、范围及组件是否启用。");
-        }
-
         List<MapBox> boxes = new List<MapBox>();
         List<MapSphere> spheres = new List<MapSphere>();
         List<MapCapsule> capsules = new List<MapCapsule>();
@@ -37,13 +22,7 @@ public static class MapBaker
         {
             if (collider is BoxCollider box)
             {
-                // 按 Unity 盒体的中心、世界旋转和缩放导出，不要求模型变换矩阵的三个轴正交。
-                boxes.Add(new MapBox
-                {
-                    center = ToVector(box.transform.TransformPoint(box.center)),
-                    size = ToVector(Vector3.Scale(box.size, AbsScale(box.transform))),
-                    rotation = ToRotation(box.transform.rotation),
-                });
+                boxes.Add(BuildBox(box));
             }
             else if (collider is SphereCollider sphere)
             {
@@ -80,6 +59,8 @@ public static class MapBaker
         {
             mapID = authoring.MapID,
             spawns = spawns,
+            cores = authoring.GetCores(),
+            monsters = authoring.GetMonsters(),
             boundsMin = ToVector(bounds.min),
             boundsMax = ToVector(bounds.max),
             boxes = boxes.ToArray(),
@@ -101,6 +82,8 @@ public static class MapBaker
                     collider.attachedRigidbody != null || collider is CharacterController ||
                     (authoring.CollisionLayers.value & (1 << collider.gameObject.layer)) == 0 ||
                     collider.GetComponentInParent<PlayerController>() != null ||
+                    collider.GetComponentInParent<CoreBase>() != null || 
+                    collider.GetComponentInParent<MonsterView>() != null ||
                     collider.GetComponentInParent<Canvas>() != null)
                 {
                     continue;
@@ -112,6 +95,17 @@ public static class MapBaker
             }
         }
         return result;
+    }
+
+    /// <summary>地形和基地底座共用盒体导出，保留实际位置、旋转和缩放。</summary>
+    public static MapBox BuildBox(BoxCollider box)
+    {
+        return new MapBox
+        {
+            center = ToVector(box.transform.TransformPoint(box.center)),
+            size = ToVector(Vector3.Scale(box.size, AbsScale(box.transform))),
+            rotation = ToRotation(box.transform.rotation),
+        };
     }
 
     /// <summary>按 Unity 胶囊的轴向与缩放规则计算世界球心、半径。</summary>
@@ -138,27 +132,12 @@ public static class MapBaker
     /// <summary>导出碰撞网格，应用世界变换，并修正镜像缩放造成的三角形反向。</summary>
     private static MapMesh BuildMesh(MeshCollider collider)
     {
-        if (collider.convex || collider.sharedMesh == null)
+        if (collider.convex)
         {
-            throw new InvalidOperationException(collider.name +"：MeshCollider 必须绑定网格并关闭 Convex，才能按实际三角网格导出。");
+            throw new InvalidOperationException(collider.name + "：暂不支持烘焙 Convex MeshCollider。");
         }
-
-        Vector3[] vertices;
-        int[] triangles;
-        try
-        {
-            vertices = collider.sharedMesh.vertices;
-            triangles = collider.sharedMesh.triangles;
-        }
-        catch (UnityException exception)
-        {
-            throw new InvalidOperationException(collider.name +
-                "：无法读取碰撞网格，请检查模型的 Read/Write 设置。" + exception.Message, exception);
-        }
-        if (vertices.Length == 0 || triangles.Length == 0)
-        {
-            throw new InvalidOperationException(collider.name + "：碰撞网格没有顶点或三角形。");
-        }
+        Vector3[] vertices = collider.sharedMesh.vertices;
+        int[] triangles = collider.sharedMesh.triangles;
 
         MapVector[] points = new MapVector[vertices.Length];
         for (int i = 0; i < vertices.Length; i++)

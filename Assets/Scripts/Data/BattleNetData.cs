@@ -20,7 +20,6 @@ public enum BattleCamp
 {
     CampA = 1,
     CampB = 2,
-    Monster = 3,
 }
 
 /// <summary>
