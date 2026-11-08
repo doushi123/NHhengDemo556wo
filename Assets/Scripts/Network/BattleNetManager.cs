@@ -99,6 +99,7 @@ public sealed class BattleNetManager : AppService
 
     public void Close()
     {
+        UIManager.Instance.Close(PanelId.BattleHud);
         KcpClient currentClient = client;
         client = null;
         currentClient?.Disconnect();
@@ -171,6 +172,8 @@ public sealed class BattleNetManager : AppService
                     }
                     IsRunning = true;
                     nextInputAt = Time.realtimeSinceStartupAsDouble;
+                    // 场景和角色已准备好，统一开战时显示战斗界面。
+                    UIManager.Instance.Open(PanelId.BattleHud);
                     break;
 
                 default:
@@ -196,10 +199,17 @@ public sealed class BattleNetManager : AppService
         SeatIndex = packet.seatIndex;
     }
 
-    /// <summary>接收本地角色采集的操作，只更新缓存，不立即发送或推进模拟。</summary>
+    /// <summary>更新移动输入，并保留尚未发送的单次点击，避免渲染帧覆盖掉点击。</summary>
     public void SetInput(BattleInput input)
     {
+        input.buttons |= currentInput.buttons;
         currentInput = input;
+    }
+
+    /// <summary>角色失活或停止采集时清空输入，包括尚未发出的点击。</summary>
+    public void ClearInput()
+    {
+        currentInput = default;
     }
 
     /// <summary>场景、模拟和本地角色都准备好后调用，只上报一次，不在本机提前开帧。</summary>
@@ -239,6 +249,14 @@ public sealed class BattleNetManager : AppService
         }
         simulation = new BattleSimulation(init, new BattlePhysics(MapSerializer.Deserialize(mapJson)),
             BattleConfigSerializer.Deserialize(configJson));
+        foreach (CoreBase core in FindObjectsOfType<CoreBase>())
+        {
+            core.PrepareBattle(simulation);
+        }
+        if (simulation.Monsters != null)
+        {
+            FindObjectOfType<MapAuthoring>().MonsterSpawner.PrepareBattle(simulation);
+        }
         InitData = init;
         nextInputFrame = BattleConst.InputDelayFrames;
         nextInputAt = Time.realtimeSinceStartupAsDouble;
@@ -268,6 +286,8 @@ public sealed class BattleNetManager : AppService
             targetFrame = targetFrame,
             input = currentInput,
         });
+        // 按钮只发送一次；移动方向和 Shift 保持到角色下次采样。
+        currentInput.buttons = BattleButtons.None;
         nextInputFrame = targetFrame + 1;
         //下次至少发送后面一帧
         nextInputAt = Time.realtimeSinceStartupAsDouble + 1.0 / BattleConst.LogicFrameRate;
