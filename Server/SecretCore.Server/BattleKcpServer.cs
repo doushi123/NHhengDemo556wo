@@ -55,6 +55,10 @@ public sealed class BattleKcpServer
         /// 是否开始广播操作帧
         /// </summary>
         public bool started;
+        /// <summary>四个席位是否已完成场景、模拟和表现初始化；认证成功不代表就绪。</summary>
+        public bool[] ready = new bool[BattleConst.SeatCount];
+        public DateTime loadDeadline = DateTime.UtcNow.AddSeconds(BattleConst.LoadTimeoutSeconds);
+        public volatile bool cancelRequested;
         /// <summary>是否由自动测试入口创建的战斗，不表示 TCP 等待房间或全局测试开关。</summary>
         public bool isTestBattle;
         public long nextFrameAt;
@@ -75,6 +79,32 @@ public sealed class BattleKcpServer
 
     /// <summary>按战斗 ID 保存各局的中继运行数据，供认证、输入汇总和帧广播查找。</summary>
     private ConcurrentDictionary<long, BattleContext> battles = new();
+
+    // TCP 线程只提交取消请求，实际断开 KCP 和清理会话由 KCP 线程执行。
+    private ConcurrentQueue<(long battleID, string error)> cancellations = new();
+    private long nextBattleID = DateTime.UtcNow.Ticks;
+
+    /// <summary>通知房间模块：所有真人已就绪，本局开始开帧。由 KCP 线程触发。</summary>
+    public event Action<long>? BattleStarted;
+
+    /// <summary>通知房间模块：本次入场或战斗已经取消。由 KCP 线程触发。</summary>
+    public event Action<long, string>? BattleCancelled;
+
+    /// <summary>正式和测试战斗共用同一个递增 ID 来源，避免两条链路碰撞。</summary>
+    public long NextBattleID()
+    {
+        return Interlocked.Increment(ref nextBattleID);
+    }
+
+    /// <summary>请求停止一局的开帧与入场，排队交给 KCP 线程清理。</summary>
+    public void CancelBattle(long battleID, string error)
+    {
+        if (battles.TryGetValue(battleID, out BattleContext? battle))
+        {
+            battle.cancelRequested = true;
+            cancellations.Enqueue((battleID, error));
+        }
+    }
 
     /// <summary>
     /// kcp2k 提供的服务端对象，负责监听连接和实际收发数据。
@@ -138,7 +168,7 @@ public sealed class BattleKcpServer
         {
             initData = battle.initData,
             seatIndex = seatIndex,
-            expireTime = DateTime.UtcNow.AddMinutes(1),
+            expireTime = battle.loadDeadline,
         };
         return token;
     }
@@ -157,6 +187,7 @@ public sealed class BattleKcpServer
         sessions.Clear();
         tickets.Clear();
         battles.Clear();
+        while (cancellations.TryDequeue(out _)) { }
     }
 
     /// <summary>
@@ -166,9 +197,22 @@ public sealed class BattleKcpServer
     {
         while (isRunning)
         {
+            while (cancellations.TryDequeue(out var cancellation))
+            {
+                RemoveBattle(cancellation.battleID, cancellation.error);
+            }
             server!.TickIncoming();
             foreach (BattleContext battle in battles.Values)
             {
+                if (battle.cancelRequested)
+                {
+                    continue;
+                }
+                if (!battle.started && DateTime.UtcNow >= battle.loadDeadline)
+                {
+                    CancelBattle(battle.initData.battleID, "等待玩家加载超时，本次开战已取消。");
+                    continue;
+                }
                 if (battle.started && Stopwatch.GetTimestamp() >= battle.nextFrameAt)
                 {
                     AdvanceFrame(battle);
@@ -213,6 +257,10 @@ public sealed class BattleKcpServer
                         connectionID, BattlePacketCodec.Deserialize<PlayerInputPacket>(bytes));
                     break;
 
+                case BattlePacketType.Ready:
+                    ReceiveReady(connectionID);
+                    break;
+
                 default:
                     Console.WriteLine(
                         $"KCP 连接 {connectionID} 上传了未处理的战斗消息：{type}");
@@ -237,7 +285,11 @@ public sealed class BattleKcpServer
             return;
         }
 
-        BattleContext battle = battles[session.initData.battleID];
+        if (!battles.TryGetValue(session.initData.battleID, out BattleContext? battle) ||
+            !battle.started || battle.cancelRequested)
+        {
+            return;
+        }
         if (packet.targetFrame <= battle.frame ||
             packet.targetFrame > battle.frame + BattleConst.LogicFrameRate)
         {
@@ -260,7 +312,9 @@ public sealed class BattleKcpServer
     private void ReceiveAuth(int connectionID, BattleAuthPacket packet)
     {
         if (!tickets.TryRemove(packet.battleToken, out BattleTicket? ticket)
-            || ticket.expireTime <= DateTime.UtcNow)
+            || ticket.expireTime <= DateTime.UtcNow
+            || !battles.TryGetValue(ticket.initData.battleID, out BattleContext? battle)
+            || battle.cancelRequested || battle.started)
         {
             Send(connectionID, BattlePacketCodec.Serialize(new BattleAuthResultPacket
             {
@@ -275,7 +329,6 @@ public sealed class BattleKcpServer
             initData = ticket.initData,
             seatIndex = ticket.seatIndex,
         };
-        BattleContext battle = battles[ticket.initData.battleID];
         battle.connections[ticket.seatIndex] = connectionID;
 
         Send(connectionID, BattlePacketCodec.Serialize(new BattleAuthResultPacket
@@ -285,23 +338,68 @@ public sealed class BattleKcpServer
         }));
         Send(connectionID, BattlePacketCodec.Serialize(ticket.initData));
 
-        // 全部真人席位入场后开始计时；电脑席位不需要 KCP 连接。
-        bool allReady = true;
+        Console.WriteLine( $"KCP 战斗认证成功：连接 {connectionID}，战斗 {ticket.initData.battleID}，席位 {ticket.seatIndex}");
+    }
+
+    /// <summary>记录客户端就绪；全部真人都上报后，先发开始通知，再从第 0 帧广播。</summary>
+    private void ReceiveReady(int connectionID)
+    {
+        if (!sessions.TryGetValue(connectionID, out BattleSession? session) ||
+            !battles.TryGetValue(session.initData.battleID, out BattleContext? battle) ||
+            battle.started || battle.cancelRequested)
+        {
+            return;
+        }
+        if (DateTime.UtcNow >= battle.loadDeadline)
+        {
+            CancelBattle(battle.initData.battleID, "等待玩家加载超时，本次开战已取消。");
+            return;
+        }
+        battle.ready[session.seatIndex] = true;
         for (int seat = 0; seat < BattleConst.SeatCount; seat++)
         {
-            if (battle.initData.seats[seat].playerID > 0 && battle.connections[seat] == 0)
+            if (battle.initData.seats[seat].playerID > 0 &&
+                (battle.connections[seat] == 0 || !battle.ready[seat]))
             {
-                allReady = false;
-                break;
+                return;
             }
         }
-        if (allReady && !battle.started)
+        battle.started = true;
+        BattleStarted?.Invoke(battle.initData.battleID);
+        byte[] bytes = BattlePacketCodec.Serialize(new BattleStartPacket { battleID = battle.initData.battleID });
+        foreach (int id in battle.connections)
         {
-            battle.started = true;
-            battle.nextFrameAt = Stopwatch.GetTimestamp();
+            if (id != 0)
+            {
+                Send(id, bytes);
+            }
         }
+        battle.nextFrameAt = Stopwatch.GetTimestamp() + Stopwatch.Frequency / BattleConst.LogicFrameRate;
+    }
 
-        Console.WriteLine( $"KCP 战斗认证成功：连接 {connectionID}，战斗 {ticket.initData.battleID}，席位 {ticket.seatIndex}");
+    /// <summary>删除本局 Token 与会话，停止开帧并通知房间，避免失败后留下等待中的战斗。</summary>
+    private void RemoveBattle(long battleID, string error)
+    {
+        if (!battles.TryRemove(battleID, out BattleContext? battle))
+        {
+            return;
+        }
+        foreach (var ticket in tickets)
+        {
+            if (ticket.Value.initData.battleID == battleID)
+            {
+                tickets.TryRemove(ticket.Key, out _);
+            }
+        }
+        foreach (int id in battle.connections)
+        {
+            if (id != 0)
+            {
+                sessions.Remove(id);
+                server!.Disconnect(id);
+            }
+        }
+        BattleCancelled?.Invoke(battleID, error);
     }
 
     /// <summary>
@@ -313,9 +411,10 @@ public sealed class BattleKcpServer
             battles.TryGetValue(session.initData.battleID, out BattleContext? battle))
         {
             battle.connections[session.seatIndex] = 0;
-            if (battle.isTestBattle)
+            battle.ready[session.seatIndex] = false;
+            if (battle.isTestBattle || !battle.started || battle.connections.All(id => id == 0))
             {
-                battles.TryRemove(session.initData.battleID, out _);
+                CancelBattle(session.initData.battleID, "玩家战斗连接已断开，本次入场已取消。");
             }
         }
         sessions.Remove(connectionID);

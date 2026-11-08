@@ -157,7 +157,8 @@ public sealed class ClientSocket
         }
 
         if (msg is CreateRoomRequestMsg || msg is JoinRoomRequestMsg
-            || msg is LeaveRoomRequestMsg || msg is StartBattleRequestMsg)
+            || msg is LeaveRoomRequestMsg || msg is StartBattleRequestMsg
+            || msg is ChangeSeatRequestMsg || msg is BattleLoadFailedMsg)
         {
             server.Rooms.Handle(this, currentPlayer, msg);
             return;

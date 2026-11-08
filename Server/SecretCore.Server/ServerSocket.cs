@@ -4,7 +4,7 @@ using System.Net.Sockets;
 public sealed class ServerSocket
 {
     /// <summary>所有 TCP 连接共用的房间管理器，统一维护成员关系和房间通知顺序。</summary>
-    public RoomManager Rooms { get; } = new RoomManager();
+    public RoomManager Rooms { get; }
 
     private object clientLock = new object();
     private List<ClientSocket> clients = new List<ClientSocket>();
@@ -17,11 +17,11 @@ public sealed class ServerSocket
     private volatile bool isRunning;
     private long nextWorldChatMessageID;
     private long nextPrivateChatMessageID;
-    private long nextBattleTestID = DateTime.UtcNow.Ticks;
 
     public ServerSocket(string dataDirectory, BattleKcpServer battleServer)
     {
         this.battleServer = battleServer;
+        Rooms = new RoomManager(battleServer);
         dataStore = new AccountDataStore(dataDirectory);
         worldChatStore = new WorldChatStore(dataDirectory);
         privateChatStore = new PrivateChatStore(dataDirectory);
@@ -34,9 +34,14 @@ public sealed class ServerSocket
     {
         try
         {
+            MapData map = MapSerializer.Deserialize(request.mapJson);
+            if (map.mapID != request.mapID || map.spawns == null || map.spawns.Length != BattleConst.SeatCount)
+            {
+                throw new InvalidDataException("测试入口需要地图中四个手动出生点，请检查地图 ID 并重新导出地图。");
+            }
             BattleInitData initData = new BattleInitData
             {
-                battleID = Interlocked.Increment(ref nextBattleTestID),
+                battleID = battleServer.NextBattleID(),
                 mapID = request.mapID,
                 randomSeed = 1,
                 mode = BattleMode.CoreWar,
@@ -45,13 +50,15 @@ public sealed class ServerSocket
 
             for (int seat = 0; seat < BattleConst.SeatCount; seat++)
             {
+                // 与正式房间一样按席位使用手动出生点，四人不再共用场景角色的位置。
+                MapVector spawn = map.spawns[seat];
                 initData.seats[seat] = new BattleSeatData
                 {
                     playerID = seat == 0 ? 1 : 0,
                     camp = seat < 2 ? BattleCamp.CampA : BattleCamp.CampB,
-                    spawnX = request.spawnX,
-                    spawnZ = request.spawnZ,
-                    spawnY = request.spawnY,
+                    spawnX = (float)spawn.x,
+                    spawnZ = (float)spawn.z,
+                    spawnY = (float)spawn.y,
                 };
             }
 

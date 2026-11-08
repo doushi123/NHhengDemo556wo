@@ -5,6 +5,16 @@ using System.Net.Sockets;
 /// </summary>
 public sealed class RoomManager
 {
+    private BattleKcpServer battleServer;
+
+    /// <summary>房间负责发起正式入场，并接收 KCP 的统一开始与取消通知。</summary>
+    public RoomManager(BattleKcpServer battleServer)
+    {
+        this.battleServer = battleServer;
+        battleServer.BattleStarted += OnBattleStarted;
+        battleServer.BattleCancelled += OnBattleCancelled;
+    }
+
     /// <summary>
     /// 房间数据的锁，防止多个线程同时修改房间数据
     /// </summary>
@@ -36,6 +46,8 @@ public sealed class RoomManager
 
         // 每个席位的玩家连接，用来给房间成员发消息；null 表示空位。
         public ClientSocket?[] clients = new ClientSocket?[BattleConst.SeatCount];
+        /// <summary>本房间正在加载或进行的战斗，等待阶段为 0。</summary>
+        public long battleID;
     }
 
     /// <summary>处理已由 ClientSocket 分类的房间请求，身份只取自该连接的登录资料。</summary>
@@ -47,6 +59,8 @@ public sealed class RoomManager
             JoinRoomRequestMsg => OperationType.JoinRoom,
             LeaveRoomRequestMsg => OperationType.LeaveRoom,
             StartBattleRequestMsg => OperationType.StartBattle,
+            ChangeSeatRequestMsg => OperationType.ChangeSeat,
+            BattleLoadFailedMsg => OperationType.StartBattle,
             _ => throw new ArgumentException("不是房间请求。", nameof(msg)),
         };
 
@@ -71,7 +85,17 @@ public sealed class RoomManager
                     Leave(client);
                     break;
                 case StartBattleRequestMsg:
-                    SendError(client, operation, "正式开战流程尚未接入。");
+                    StartBattle(client, player);
+                    break;
+                case ChangeSeatRequestMsg request:
+                    ChangeSeat(client, request.seatIndex);
+                    break;
+                case BattleLoadFailedMsg request:
+                    if (memberships.TryGetValue(client, out Room? room) &&
+                        room.data.state == RoomState.Loading && room.battleID == request.battleID)
+                    {
+                        battleServer.CancelBattle(request.battleID, player.account + " 加载失败：" + request.error);
+                    }
                     break;
             }
         }
@@ -84,6 +108,10 @@ public sealed class RoomManager
         {
             if (memberships.TryGetValue(client, out Room? room))
             {
+                if (room.battleID != 0)
+                {
+                    battleServer.CancelBattle(room.battleID, "房间成员已断线，本次战斗已取消。");
+                }
                 RemoveMember(client, room);
             }
         }
@@ -158,6 +186,159 @@ public sealed class RoomManager
 
         AddMember(client, player, room, seat);
         Broadcast(room);
+    }
+
+    /// <summary>将玩家移动到指定空席位，释放原席位后向所有成员下发最新房间数据。</summary>
+    private void ChangeSeat(ClientSocket client, int seatIndex)
+    {
+        if (!memberships.TryGetValue(client, out Room? room))
+        {
+            SendError(client, OperationType.ChangeSeat, "当前不在房间中。");
+            return;
+        }
+        if (room.data.state != RoomState.Waiting)
+        {
+            SendError(client, OperationType.ChangeSeat, "房间已进入开战流程，不能切换席位。");
+            return;
+        }
+        if (seatIndex < 0 || seatIndex >= room.clients.Length)
+        {
+            SendError(client, OperationType.ChangeSeat, "席位编号无效。");
+            return;
+        }
+        if (room.clients[seatIndex] != null)
+        {
+            SendError(client, OperationType.ChangeSeat, "该席位已有人，请选择其他空位。");
+            return;
+        }
+
+        int oldSeat = Array.IndexOf(room.clients, client);
+        room.clients[seatIndex] = client;
+        room.data.seats[seatIndex] = room.data.seats[oldSeat];
+        room.clients[oldSeat] = null;
+        room.data.seats[oldSeat] = null!;
+        // 只改变席位，房主身份和玩家所属房间保持不变。
+        Broadcast(room);
+    }
+
+    /// <summary>检查房主和房间阶段，读取四个手动出生点，为真人签发 Token 并通知加载。</summary>
+    private void StartBattle(ClientSocket client, PlayerProfileData player)
+    {
+        if (!memberships.TryGetValue(client, out Room? room))
+        {
+            SendError(client, OperationType.StartBattle, "当前不在房间中。");
+            return;
+        }
+        if (room.data.ownerPlayerID != player.playerID)
+        {
+            SendError(client, OperationType.StartBattle, "只有房主可以开始游戏。");
+            return;
+        }
+        if (room.data.state != RoomState.Waiting)
+        {
+            SendError(client, OperationType.StartBattle, "房间已开始加载或战斗。");
+            return;
+        }
+
+        long battleID = battleServer.NextBattleID();
+        try
+        {
+            string path = Path.Combine(AppContext.BaseDirectory, "Maps", $"Map_{room.data.mapID}.json");
+            MapData map = MapSerializer.Deserialize(File.ReadAllText(path));
+            if (map.mapID != room.data.mapID || map.spawns == null || map.spawns.Length != BattleConst.SeatCount)
+            {
+                throw new InvalidDataException("地图缺少四个手动出生点，请重新导出地图并构建服务端。");
+            }
+            BattleInitData init = new BattleInitData
+            {
+                battleID = battleID,
+                mapID = room.data.mapID,
+                mode = room.data.mode,
+                randomSeed = Random.Shared.Next(),
+                seats = new BattleSeatData[BattleConst.SeatCount],
+            };
+            for (int seat = 0; seat < init.seats.Length; seat++)
+            {
+                MapVector spawn = map.spawns[seat];
+                init.seats[seat] = new BattleSeatData
+                {
+                    playerID = room.data.seats[seat] == null ? 0 : room.data.seats[seat].playerID,
+                    camp = seat < 2 ? BattleCamp.CampA : BattleCamp.CampB,
+                    spawnX = (float)spawn.x,
+                    spawnY = (float)spawn.y,
+                    spawnZ = (float)spawn.z,
+                };
+            }
+
+            // 全部 Token 成功签发后再通知成员，避免一部分人入场、另一部分仍在房间。
+            string[] tokens = new string[BattleConst.SeatCount];
+            for (int seat = 0; seat < tokens.Length; seat++)
+            {
+                if (room.clients[seat] != null)
+                {
+                    tokens[seat] = battleServer.CreateToken(init, seat);
+                }
+            }
+            room.battleID = battleID;
+            room.data.state = RoomState.Loading;
+            Broadcast(room);
+            for (int seat = 0; seat < tokens.Length; seat++)
+            {
+                if (room.clients[seat] != null)
+                {
+                    Enqueue(room.clients[seat]!, new BattleEntryMsg
+                    {
+                        battleID = battleID,
+                        mapID = init.mapID,
+                        battleToken = tokens[seat],
+                    });
+                }
+            }
+        }
+        catch (Exception exception) when (exception is IOException || exception is InvalidOperationException ||
+            exception is System.Text.Json.JsonException || exception is UnauthorizedAccessException)
+        {
+            battleServer.CancelBattle(battleID, exception.Message);
+            SendError(client, OperationType.StartBattle, "无法开始游戏：" + exception.Message);
+        }
+    }
+
+    /// <summary>全部真人已就绪时，把对应房间改为战斗中并通知成员。</summary>
+    private void OnBattleStarted(long battleID)
+    {
+        lock (roomLock)
+        {
+            Room? room = rooms.Values.FirstOrDefault(item => item.battleID == battleID);
+            if (room != null)
+            {
+                room.data.state = RoomState.InBattle;
+                Broadcast(room);
+            }
+        }
+    }
+
+    /// <summary>取消本局后恢复等待状态，先刷新房间，再通知成员显示取消原因。</summary>
+    private void OnBattleCancelled(long battleID, string error)
+    {
+        lock (roomLock)
+        {
+            Room? room = rooms.Values.FirstOrDefault(item => item.battleID == battleID);
+            if (room == null)
+            {
+                return;
+            }
+            room.battleID = 0;
+            room.data.state = RoomState.Waiting;
+            // 先打开房间，再显示取消提示，避免新开的房间面板盖住提示。
+            Broadcast(room);
+            foreach (ClientSocket? member in room.clients)
+            {
+                if (member != null)
+                {
+                    Enqueue(member, new BattleCancelledMsg { battleID = battleID, error = error });
+                }
+            }
+        }
     }
 
     /// <summary>
