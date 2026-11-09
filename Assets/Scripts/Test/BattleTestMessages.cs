@@ -15,19 +15,9 @@ public sealed class BattleTestRequestMsg : BaseMsg
     [NetField(1)]
     public int mapID;
 
-    [NetField(2)]
-    public float spawnX;
-
-    [NetField(3)]
-    public float spawnZ;
-
-    /// <summary>仅供测试链路上传的正式导出地图 JSON，去掉缩进以减小消息体；正式链路不上传地图。</summary>
+    /// <summary>仅测试入口上传的正式地图 JSON，包含四个手动出生点；正式链路不上传地图。</summary>
     [NetField(4)]
     public string mapJson = string.Empty;
-
-    /// <summary>场景中玩家根节点（脚底）的高度，单位为米。</summary>
-    [NetField(5)]
-    public float spawnY;
 }
 
 /// <summary>

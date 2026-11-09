@@ -96,9 +96,6 @@ public sealed class BattleTestRunner : MonoBehaviour
         NetManager.Instance.Send(new BattleTestRequestMsg
         {
             mapID = map.MapID,
-            spawnX = player.transform.position.x,
-            spawnZ = player.transform.position.z,
-            spawnY = player.transform.position.y,
             mapJson = mapJson,
         });
         Debug.Log("测试战斗请求已发送，等待服务端 Token。");

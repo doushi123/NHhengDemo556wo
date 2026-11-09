@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <AssemblyName>FixMath.NET</AssemblyName>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <!-- 保留上游程序集信息，避免与 SDK 自动生成的属性重复。 -->
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- 与 Unity 的 FixMath.NET.asmdef 编译同一份运行时源码，不包含 tests~。 -->
+    <Compile Include="..\..\..\Packages\FixedMath.Net\src\**\*.cs"
+             Exclude="..\..\..\Packages\FixedMath.Net\src\bin\**;..\..\..\Packages\FixedMath.Net\src\obj\**"
+             Link="Source\%(RecursiveDir)%(Filename)%(Extension)" />
+  </ItemGroup>
+</Project>
