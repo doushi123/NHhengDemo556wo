@@ -22,8 +22,6 @@ public sealed class BattleNetManager : AppService
     private BattleSimulation simulation;
     private int nextInputFrame;
     private double nextInputAt;
-    // 正式流程等场景与角色准备好后，由 RoomManager 的入场流程明确上报；测试入口在已有场景中准备。
-    private bool waitForSceneReady;
     private bool readySent;
 
     /// <summary>收到服务端统一开始通知后才允许采集输入、发送操作与执行帧。</summary>
@@ -31,11 +29,6 @@ public sealed class BattleNetManager : AppService
 
     /// <summary>本次连接或初始化失败的原因，供加载入口显示并通知服务端。</summary>
     public string Error { get; private set; }
-    /// <summary>
-    /// 仅测试链路使用：缓存已上传服务端的正式地图 JSON（去掉缩进后的文本），供同文本 Hash 校验。
-    /// 正式链路不设置此字段，直接读取本地导出的地图文件。
-    /// </summary>
-    private string uploadedMapJson;
     /// <summary>
     /// 当前是否通过认证
     /// </summary>
@@ -72,11 +65,10 @@ public sealed class BattleNetManager : AppService
     /// <summary>
     /// 使用 TCP 服务端签发的临时 Token 建立战斗连接。
     /// </summary>
-    public void Connect(string token, bool waitForSceneReady = false)
+    public void Connect(string token)
     {
         Close();
 
-        this.waitForSceneReady = waitForSceneReady;
         Error = null;
         battleToken = token;
         shouldClose = false;
@@ -114,7 +106,6 @@ public sealed class BattleNetManager : AppService
         readySent = false;
         nextInputFrame = 0;
         currentInput = default;
-        uploadedMapJson = null;
     }
 
     protected override void OnShutdown()
@@ -158,10 +149,6 @@ public sealed class BattleNetManager : AppService
                         throw new InvalidDataException("尚未收到统一开始通知，却收到了操作帧。");
                     }
                     simulation.Step(BattlePacketCodec.Deserialize<AuthorityFramePacket>(bytes));
-                    if (!waitForSceneReady && simulation.Frame == 0)
-                    {
-                        Debug.Log("测试战斗收到首个权威帧，角色移动可以开始。");
-                    }
                     break;
 
                 case BattlePacketType.Start:
@@ -227,21 +214,13 @@ public sealed class BattleNetManager : AppService
         readySent = true;
     }
 
-    /// <summary>仅供测试入口调用：保存已上传的正式地图 JSON，避免排版差异导致 Hash 不一致；正式链路不调用。</summary>
-    public void SetUploadedMapForTest(string mapJson)
-    {
-        uploadedMapJson = mapJson;
-    }
-
     /// <summary>读取双端相同的配置和地图文件，并在第一帧前核对 Hash。</summary>
     private void BeginBattle(BattleInitData init)
     {
         string configJson = File.ReadAllText(Path.Combine(Application.streamingAssetsPath,
             BattleConst.ConfigFileName));
-        // 测试入口使用已上传的同一段文本；正式链路读取本地正式导出文件。
-        string mapJson = BattleTestMode.Enabled && uploadedMapJson != null? uploadedMapJson
-            : File.ReadAllText(Path.Combine(Application.streamingAssetsPath,
-                "Maps", "Map_" + init.mapID + ".json"));
+        string mapJson = File.ReadAllText(Path.Combine(Application.streamingAssetsPath,
+            "Maps", "Map_" + init.mapID + ".json"));
         if (BattleConfigSerializer.GetHash(configJson) != init.configHash ||
             BattleConfigSerializer.GetHash(mapJson) != init.mapHash)
         {
@@ -260,16 +239,6 @@ public sealed class BattleNetManager : AppService
         InitData = init;
         nextInputFrame = BattleConst.InputDelayFrames;
         nextInputAt = Time.realtimeSinceStartupAsDouble;
-        if (!waitForSceneReady)
-        {
-            // 自动测试入口已经位于战斗场景，但同样必须完成角色准备并明确上报就绪。
-            FindObjectOfType<PlayerController>().PrepareBattle();
-            SendReady();
-        }
-        if (!waitForSceneReady)
-        {
-            Debug.Log("测试战斗初始化完成：战斗 " + init.battleID + "，地图 " + init.mapID + "。");
-        }
     }
 
     /// <summary>以固定逻辑频率把当前按键采样发到未来帧；指定它在哪个未来帧生效。</summary>
@@ -319,7 +288,7 @@ public sealed class BattleNetManager : AppService
         Error = error;
         shouldClose = true;
         Debug.LogError(error);
-        if (!waitForSceneReady)
+        if (IsRunning)
         {
             UIManager.Instance.Open(PanelId.Tip, error);
         }

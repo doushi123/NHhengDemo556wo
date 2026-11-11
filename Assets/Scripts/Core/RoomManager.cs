@@ -171,7 +171,7 @@ public sealed class RoomManager : AppService
         }
 
         LoaderManager.Instance.SetProgress(0.8f, "守护己方秘核，攻破敌方核心。");
-        BattleNetManager.Instance.Connect(entry.battleToken, true);
+        BattleNetManager.Instance.Connect(entry.battleToken);
         // 全员加载期限由服务端统一计时，超时会收到取消通知；TCP 断线则由 Clear 停止协程。
         while (BattleNetManager.Instance.Simulation == null)
         {

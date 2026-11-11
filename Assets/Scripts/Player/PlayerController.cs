@@ -67,7 +67,7 @@ public sealed class PlayerController : MonoBehaviour
         }
         ClearOtherPlayers();
         ClearSwordWaveViews();
-        // 测试入口可能在管理器加载前暂停角色，退出时管理器也可能已经销毁。
+        // 退出时管理器可能已经销毁。
         if (BattleNetManager.Instance != null)
         {
             BattleNetManager.Instance.ClearInput();

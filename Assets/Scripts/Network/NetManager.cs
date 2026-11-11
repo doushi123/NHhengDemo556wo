@@ -278,12 +278,6 @@ public sealed class NetManager : AppService
             return;
         }
 
-        if (msg is BattleTestTokenMsg battleTestToken)
-        {
-            BattleTestRunner.ReceiveToken(battleTestToken);
-            return;
-        }
-
         if (msg is RoomDataMsg roomData)
         {
             RoomManager.Instance.Receive(roomData);
