@@ -296,6 +296,12 @@ public sealed class NetManager : AppService
             return;
         }
 
+        if (msg is BattleFinishedMsg battleFinished)
+        {
+            RoomManager.Instance.Receive(battleFinished);
+            return;
+        }
+
         if (msg is RoomLeftMsg roomLeft)
         {
             RoomManager.Instance.Receive(roomLeft);

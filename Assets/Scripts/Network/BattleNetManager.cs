@@ -24,7 +24,7 @@ public sealed class BattleNetManager : AppService
     private double nextInputAt;
     private bool readySent;
 
-    /// <summary>收到服务端统一开始通知后才允许采集输入、发送操作与执行帧。</summary>
+    /// <summary>统一开战后允许采集、发送和执行操作；判出胜负后停止。</summary>
     public bool IsRunning { get; private set; }
 
     /// <summary>本次连接或初始化失败的原因，供加载入口显示并通知服务端。</summary>
@@ -59,6 +59,17 @@ public sealed class BattleNetManager : AppService
         if (shouldClose)
         {
             Close();
+        }
+        else if (IsRunning && simulation.IsFinished)
+        {
+            // 本机模拟已判出胜负，只上报一次；服务端通知所有成员一起退出。
+            IsRunning = false;
+            ClearInput();
+            NetManager.Instance.Send(new BattleFinishedMsg
+            {
+                battleID = InitData.Value.battleID,
+                winningCamp = simulation.Winner.HasValue ? (int)simulation.Winner.Value : 0,
+            });
         }
     }
 
@@ -144,6 +155,10 @@ public sealed class BattleNetManager : AppService
                     break;
 
                 case BattlePacketType.AuthorityFrame:
+                    if (simulation.IsFinished)
+                    {
+                        break;
+                    }
                     if (!IsRunning)
                     {
                         throw new InvalidDataException("尚未收到统一开始通知，却收到了操作帧。");
@@ -244,7 +259,7 @@ public sealed class BattleNetManager : AppService
     /// <summary>以固定逻辑频率把当前按键采样发到未来帧；指定它在哪个未来帧生效。</summary>
     private void SendCurrentInput()
     {
-        if (!IsRunning || Time.realtimeSinceStartupAsDouble < nextInputAt)
+        if (!IsRunning || simulation.IsFinished || Time.realtimeSinceStartupAsDouble < nextInputAt)
         {
             return;
         }

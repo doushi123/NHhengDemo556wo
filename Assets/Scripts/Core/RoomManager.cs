@@ -137,6 +137,17 @@ public sealed class RoomManager : AppService
         UIManager.Instance.Open(PanelId.Tip, msg.error);
     }
 
+    /// <summary>按本机阵营显示胜负，清理本局并返回大厅，保留登录和 TCP 连接。</summary>
+    public void Receive(BattleFinishedMsg msg)
+    {
+        BattleCamp ownCamp = BattleNetManager.Instance.InitData.Value.seats[BattleNetManager.Instance.SeatIndex].camp;
+        string result = msg.winningCamp == 0 ? "双方秘核同时被摧毁，本局平局。" : msg.winningCamp == (int)ownCamp ? "我方阵营胜利！" : "敌方阵营胜利！";
+        Clear();
+        UIManager.Instance.Open(PanelId.Lobby);
+        LoaderManager.Instance.LoadScene("BootStrap");
+        UIManager.Instance.Open(PanelId.Tip, result);
+    }
+
     /// <summary>借助全局加载器切场景，再连接 KCP、准备角色并等待全员就绪后统一开始。</summary>
     private IEnumerator LoadBattle(BattleEntryMsg entry)
     {

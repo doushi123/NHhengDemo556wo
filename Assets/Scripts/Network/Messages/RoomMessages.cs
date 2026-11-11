@@ -108,3 +108,15 @@ public class BattleCancelledMsg : BaseMsg
     [NetField(2)]
     public string error = string.Empty;
 }
+
+/// <summary>客户端上报本局胜负；服务端结束房间后，将结果通知所有成员返回大厅。</summary>
+[NetMessage(1611)]
+public class BattleFinishedMsg : BaseMsg
+{
+    [NetField(1)]
+    public long battleID;
+
+    /// <summary>获胜阵营：1 为 A，2 为 B；双方基地同帧被摧毁时为 0，表示平局。</summary>
+    [NetField(2)]
+    public int winningCamp;
+}
